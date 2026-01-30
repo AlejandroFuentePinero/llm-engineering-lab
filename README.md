@@ -4,7 +4,7 @@ This subproject is a small learning lab to practice a clean “fetch → prompt 
 
 ### Problem
 
-When I’m learning or researching, I often want a quick, structured summary of a webpage without manually copying the content into a prompt.
+Important information is often buried in lengthy webpages and documents. Stakeholders need quick, consistent summaries to stay informed and make decisions, but manual summarisation doesn’t scale.
 
 ### Business applications
 
@@ -17,7 +17,7 @@ A lightweight notebook-first tool that:
 1) Fetches the readable text content from a target URL (via a helper in `src/`).
 2) Builds a simple prompt (system prompt + user prompt prefix + website text).
 3) Calls an OpenAI chat model to generate a summary.
-4) Displays the result nicely in the notebook as Markdown.
+4) Displays the result nicely in the notebook as Markdown with customisable personality.
 
 The core entry point is `web_summary_tool(...)`.
 
@@ -28,8 +28,7 @@ Open the notebook in `OpenAI-API-Call/Notebooks/`, run the setup cells, then cal
 ```python
 web_summary_tool(
     url="https://example.com",
-    system_prompt="You are a helpful assistant. Summarise the page clearly.",
-    user_prompt_prefix="Summarise this webpage:\n\n",
+    chat_personality = "snarky",
     model="gpt-4.1-mini",
 )
 ```
