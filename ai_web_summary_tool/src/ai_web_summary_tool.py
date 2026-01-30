@@ -17,8 +17,7 @@ from openai import OpenAI
 # Main function
 def web_summary_tool(
     url: str = "http://google.com",
-    system_prompt: str = "prompt",
-    user_prompt_prefix: str = "prompt",
+    chat_personality: str = "snarky",
     model: str = "gpt-4.1-mini",
     max_chars: int = 25_000,
     show: bool = True,
@@ -65,6 +64,15 @@ def web_summary_tool(
         website = website[:max_chars] + "\n\n[TRUNCATED]"
 
     # Define system and user message for the call
+
+    system_prompt = f"You are a {chat_personality} assistant that analyzes the contents of a website, and provides a short, snarky, humorous summary, ignoring text that might be navigation related. Respond in markdown. Do not wrap the markdown in a code block - respond just with the markdown."
+
+    user_prompt_prefix = """
+    Here are the contents of a website.
+    Provide a short summary of this website.
+    If it includes news or announcements, then summarize these too.
+
+    """
 
     messages = [
         {"role": "system", "content": system_prompt},
