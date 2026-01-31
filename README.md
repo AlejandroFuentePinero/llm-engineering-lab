@@ -1,38 +1,32 @@
 ## Web Summary Tool
 
-This subproject is a small learning lab to practice a clean “fetch → prompt → summarise” flow with the OpenAI API.
+A small, deployable Python utility that turns a webpage URL into a concise Markdown summary using an LLM. It’s designed to be embedded into internal workflows where people need quick, repeatable briefs from unstructured web content.
 
-### Problem
+### Business problem
 
-Important information is often buried in lengthy webpages and documents. Stakeholders need quick, consistent summaries to stay informed and make decisions, but manual summarisation doesn’t scale.
+Stakeholders often need to extract decision-relevant information from long webpages (announcements, reports, research posts). Manual summarisation is slow, inconsistent, and doesn’t scale across many sources.
 
-### Business applications
+### What it does
 
-This tool uses an LLM API to generate concise summaries from long, unstructured text. Common uses include news/research briefings, report highlights, stakeholder updates, and first-draft writing support. Treat results as a draft—validate key facts and avoid sensitive inputs.
+Given a URL, `web_summary_tool(...)`:
+- fetches and extracts the readable text from the webpage
+- applies a safety cap (`max_chars`) to prevent oversized prompts
+- generates a short summary in Markdown via a chat model
+- can run via either a hosted API (OpenAI) or a local open-source model (Ollama)
+- either returns the summary text or renders it (controlled by `show`)
 
-### What I built
+### Tone / “personality” control
 
-A lightweight notebook-first tool that:
+The tool accepts a `chat_personality` parameter to adapt tone and framing to the audience. This is useful when the same underlying content needs to be summarised differently depending on context (e.g., a terse executive brief vs. a more detailed analyst-style summary). The output remains Markdown so it can drop cleanly into docs, notes, or downstream pipelines.
 
-1) Fetches the readable text content from a target URL (via a helper in `src/`).
-2) Builds a simple prompt (system prompt + user prompt prefix + website text).
-3) Calls an OpenAI chat model to generate a summary.
-4) Displays the result nicely in the notebook as Markdown with customisable personality.
+### Interface
 
-The core entry point is `web_summary_tool(...)`.
+`web_summary_tool(url, chat_personality="…", openai_model="…", ollama_model="…", max_chars=25000, show=True, run_open_ai=True, run_ollama=True)`
 
-### How to use
-
-Open the notebook in `OpenAI-API-Call/Notebooks/`, run the setup cells, then call:
-
-```python
-web_summary_tool(
-    url="https://example.com",
-    chat_personality = "snarky",
-    model="gpt-4.1-mini",
-)
-```
-
-> Notes:
-> The tool expects OPENAI_API_KEY to be available via your environment (loaded from .env).
-> The page fetch logic lives in OpenAI-API-Call/src/ so the notebook stays focused on the workflow.
+- `url`: webpage to summarise  
+- `openai_model`: hosted chat model used when `run_open_ai=True`  
+- `ollama_model`: local model used when `run_ollama=True`  
+- `max_chars`: crude guardrail to limit prompt size  
+- `show`: if `True`, displays Markdown; if `False`, returns results as strings  
+- `run_open_ai`: enable OpenAI backend (requires `OPENAI_API_KEY`)  
+- `run_ollama`: enable Ollama backend (requires Ollama installed and running locally)
