@@ -1,3 +1,9 @@
+# LLM Engineering Learning Lab
+
+A hands-on learning lab for LLM engineering: a growing collection of small, deployable Python projects that explore core patterns through practical, real-world utilities.
+
+---
+
 ## Web Summary Tool
 
 A small, deployable Python utility that turns a webpage URL into a concise Markdown summary using an LLM. It’s designed to be embedded into internal workflows where people need quick, repeatable briefs from unstructured web content.
@@ -31,9 +37,11 @@ The tool accepts a `chat_personality` parameter to adapt tone and framing to the
 - `run_open_ai`: enable OpenAI backend (requires `OPENAI_API_KEY`)  
 - `run_ollama`: enable Ollama backend (requires Ollama installed and running locally)
 
+---
+
 ## Company Brochure Generator
 
-A small notebook-friendly Python utility that turns a company website into a short, readable Markdown brochure using an LLM. It’s designed for quick prospecting: generating a consistent “who they are / what they do / why they matter” brief for customers, investors, or recruits.
+A small, reusable Python utility that turns a company website into a short, readable Markdown brochure using an LLM. It’s designed for quick prospecting: generating a consistent “who they are / what they do / why they matter” brief for customers, investors, or recruits — and returning Markdown that can drop into docs, notes, CRMs, or downstream pipelines.
 
 ### Business problem
 
@@ -42,18 +50,30 @@ When evaluating companies (for sales, investing, partnerships, or job applicatio
 ### What it does
 
 Given a company name and homepage URL, `brochure_generator(...)`:
-- scrapes the homepage for all available links
+- collects candidate links from the homepage
 - uses a chat model to select a small set of brochure-relevant pages (e.g., About, Products, Careers)
 - fetches the text content for the homepage + selected pages
 - generates a short brochure in Markdown (no code blocks) covering:
   - what the company does and who it serves
   - products / services and key differentiators (if present)
   - culture and hiring signals (if present)
-- streams the output to the notebook with a “typewriter” effect, while also returning the final Markdown string
+- returns the final Markdown string (optionally streaming it during generation if you’re running in an interactive environment)
 
-### Streaming output (“typewriter” mode)
+### Notes on the design (why it’s structured this way)
 
-In a notebook context, the generator updates a single Markdown display cell as tokens stream in, creating a typewriter-style reveal. This is purely a presentation layer: the final output is still returned as a plain Markdown string so it can be saved, reused, or exported.
+This project is a minimal “agentic” workflow: instead of a single giant prompt, it chains multiple LLM calls with a clear intermediate artefact.
+
+- **Step 1: page selection (planning / routing)**  
+  The model first decides *which pages are worth reading* for a brochure (About, Products, Careers, Customers). This reduces noise versus scraping everything.
+
+- **Step 2: content synthesis (generation)**  
+  A second call writes the brochure using the retrieved page text as evidence, producing a consistent output format in Markdown.
+
+This two-stage pattern (select → generate) generalises well beyond brochures, for example:
+- marketing copy generation from a website + product pages
+- investor-style briefs from public company pages
+- recruitment briefs from About + Careers pages
+- tutorials / internal docs generated from specs + docs pages
 
 ### Interface
 
@@ -63,3 +83,39 @@ In a notebook context, the generator updates a single Markdown display cell as t
 - `url`: company homepage to crawl  
 - `model`: chat model used for both link selection and brochure generation  
 - `max_pages`: maximum number of “relevant” pages to fetch in addition to the landing page
+
+## Tech Tutor
+
+A small, reusable Python utility that answers questions about data work (data engineering, data science, machine learning, and general software concepts) and explains code in clear Markdown using an LLM. It’s designed for fast learning loops: ask a question, paste a snippet, get a memorable explanation you can drop into notes, docs, or study material.
+
+### Business problem
+
+People working in data roles constantly encounter unfamiliar concepts, jargon, and code patterns (model behaviour, pipeline logic, SQL idioms, ML tooling). Searching the web often yields fragmented answers, and generic AI responses can be either overly technical or overly “tutorial-ish”. What’s missing is a consistent, high-signal tutor that can explain *precisely* and *memorably* on demand.
+
+### What it does
+
+Given a question (and optionally a code snippet), `tech_tutor(...)`:
+- produces a concise, high-signal explanation aimed at a competent coder new to the specific topic
+- uses a single movie-based analogy thread (configured via `favourite_movie`) to make the concept stick without overshooting into fan-fiction
+- supports both concept explanations and “what does this code do?” walkthroughs (plus practical gotchas)
+- returns Markdown suitable for pasting into notes / docs, and can optionally render it when running interactively
+- can run via either a hosted API (OpenAI) or a local open-source model (Ollama)
+
+### Tone / “storytelling” control
+
+The tutor is deliberately designed to be more memorable than a standard technical answer. The analogy is not a decorative add-on: it’s used as the backbone of the explanation, with short technical “translations” to keep the answer rigorous. This makes it useful for learning, interview prep, and quickly internalising new patterns.
+
+### Interface
+
+`tech_tutor(question, code=None, favourite_movie="…", openai_model="…", ollama_model="…", temperature=0.7, show=True, run_open_ai=True, run_ollama=True, ollama_base_url="http://localhost:11434/v1")`
+
+- `question`: the concept or code question to answer  
+- `code`: optional code snippet to explain  
+- `favourite_movie`: the story universe used for the analogy thread  
+- `openai_model`: hosted chat model used when `run_open_ai=True`  
+- `ollama_model`: local model used when `run_ollama=True`  
+- `temperature`: creativity level (higher = more playful analogies)  
+- `show`: if `True`, renders Markdown in interactive environments; otherwise returns strings  
+- `run_open_ai`: enable OpenAI backend (requires `OPENAI_API_KEY`)  
+- `run_ollama`: enable Ollama backend (requires Ollama installed and running locally)  
+- `ollama_base_url`: OpenAI-compatible local endpoint for Ollama
