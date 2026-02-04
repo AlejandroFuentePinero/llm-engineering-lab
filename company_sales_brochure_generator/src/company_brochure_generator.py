@@ -10,6 +10,49 @@ from openai import OpenAI
 from ai_web_summary_tool.src.scraper import fetch_website_links, fetch_website_contents
 
 
+"""
+SCRIPT OVERVIEW (data flow)
+
+This script builds a company brochure in two LLM steps:
+1) ask the model which pages are worth reading for a brochure
+2) ask the model to write the brochure using the retrieved page text
+
+Pipeline:
+
+1) Link discovery → user prompt
+   fetch_website_links(url) is called inside get_links_user_prompt(url) to build a prompt
+   that contains the homepage URL plus the raw list of discovered links.
+
+2) LLM link selection (API call #1)
+   select_relevant_links(url, client, model) sends:
+     - link_system_prompt: rules + required JSON schema for link selection
+     - get_links_user_prompt(url): the link list to choose from
+   The model returns {"links": [{"type": "...", "url": "..."} ...]}.
+   We normalise URLs with urljoin(...) so relative links become full URLs.
+
+3) Content retrieval → one combined text chunk
+   fetch_page_and_all_relevant_links(url, client, model, max_pages):
+     - fetches the landing page text via fetch_website_contents(url)
+     - iterates over the selected links (up to max_pages)
+     - fetches each page's text via fetch_website_contents(link["url"])
+     - concatenates everything into a single markdown-ish string (the "evidence bundle")
+
+4) Brochure prompt construction
+   get_brochure_user_prompt(company_name, pages_text, max_chars) wraps the combined
+   text chunk in a clear instruction to write a brochure, and truncates to max_chars
+   to keep the prompt bounded.
+
+5) LLM brochure generation (API call #2, streamed)
+   brochure_generator(...) sends:
+     - brochure_system_prompt: brochure writing rules (markdown, no code blocks, include culture/customers/careers if present)
+     - get_brochure_user_prompt(...): the retrieved website text
+   The response is streamed so tokens arrive incrementally.
+
+6) Notebook UX: "typewriter" rendering
+   stream_markdown_typewriter(stream, ...) updates a single Jupyter output cell as tokens
+   arrive, creating a typewriter-style reveal. The final markdown string is also returned.
+"""
+
 # SYSTEM PROMPTS
 link_system_prompt = """
 You are provided with a list of links found on a webpage.
