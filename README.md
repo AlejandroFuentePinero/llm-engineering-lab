@@ -1,8 +1,22 @@
 # LLM Engineering Learning Lab
 
-A hands-on learning lab for LLM engineering: a growing collection of small, deployable Python projects that explore core patterns through practical, real-world utilities.
+<p align="center">
+  <img src="media/llm-engineering-cartoon.png" alt="LLM Engineering Learning Lab" width="900">
+</p>
+
+## Motivation
+This repo is where I build LLM capabilities that hold up in real work. It presents a curated set of deployable Python utilities that apply LLMs to real workflow problems.
+
+The emphasis is control and reuse. Prompts are treated as contracts (tone, length, structure), multi-step pipelines are used when they improve relevance, and outputs are produced as Markdown/JSON so they drop cleanly into docs, notes, tickets, and downstream tools.
+
+## Contents
+- [Web Summary Tool](#web-summary-tool)
+- [Company Brochure Generator](#company-brochure-generator)
+- [Tech Tutor](#tech-tutor)
 
 ---
+
+# Projects
 
 ## Web Summary Tool
 
@@ -83,6 +97,8 @@ This two-stage pattern (select → generate) generalises well beyond brochures, 
 - `url`: company homepage to crawl  
 - `model`: chat model used for both link selection and brochure generation  
 - `max_pages`: maximum number of “relevant” pages to fetch in addition to the landing page
+
+---
 
 ## Tech Tutor
 
