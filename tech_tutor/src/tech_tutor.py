@@ -20,7 +20,7 @@ def tech_tutor(
     question: str,
     code: Optional[str] = None,
     favourite_movie: str = "Lord of the Rings",
-    openai_model: str = "gpt-4.1-mini",
+    openai_model: str = "gpt-5-nano",
     ollama_model: str = "llama3.2",
     run_open_ai: bool = True,
     run_ollama: bool = True,

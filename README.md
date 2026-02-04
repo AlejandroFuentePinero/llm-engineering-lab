@@ -55,7 +55,7 @@ The tool accepts a `chat_personality` parameter to adapt tone and framing to the
 
 ## Company Brochure Generator
 
-A small, reusable Python utility that turns a company website into a short, readable Markdown brochure using an LLM. It’s designed for quick prospecting: generating a consistent “who they are / what they do / why they matter” brief for customers, investors, or recruits — and returning Markdown that can drop into docs, notes, CRMs, or downstream pipelines.
+A reusable Python utility that turns a company website into a short, readable Markdown brochure using an LLM. It’s designed for fast prospecting: generating a consistent “who they are / what they do / why they matter” brief for customers, investors, or recruits — with Markdown output that drops cleanly into docs, notes, CRMs, or downstream workflows.
 
 ### Business problem
 
@@ -71,14 +71,15 @@ Given a company name and homepage URL, `brochure_generator(...)`:
   - what the company does and who it serves
   - products / services and key differentiators (if present)
   - culture and hiring signals (if present)
-- returns the final Markdown string (optionally streaming it during generation if you’re running in an interactive environment)
+- optionally translates the brochure into a target language (preserving Markdown structure)
+- returns the final Markdown string (optionally streaming it during generation in interactive environments)
 
 ### Notes on the design (why it’s structured this way)
 
 This project is a minimal “agentic” workflow: instead of a single giant prompt, it chains multiple LLM calls with a clear intermediate artefact.
 
 - **Step 1: page selection (planning / routing)**  
-  The model first decides *which pages are worth reading* for a brochure (About, Products, Careers, Customers). This reduces noise versus scraping everything.
+  The model first decides which pages are worth reading for a brochure (About, Products, Careers, Customers). This reduces noise versus scraping everything.
 
 - **Step 2: content synthesis (generation)**  
   A second call writes the brochure using the retrieved page text as evidence, producing a consistent output format in Markdown.
@@ -91,12 +92,16 @@ This two-stage pattern (select → generate) generalises well beyond brochures, 
 
 ### Interface
 
-`brochure_generator(company_name, url, model="gpt-4.1-mini", max_pages=6)`
+`brochure_generator(company_name, url, model="gpt-4.1-mini", max_pages=6, translate=False, language="Spanish")`
 
 - `company_name`: label used to frame the brochure narrative  
 - `url`: company homepage to crawl  
 - `model`: chat model used for both link selection and brochure generation  
-- `max_pages`: maximum number of “relevant” pages to fetch in addition to the landing page
+- `max_pages`: maximum number of “relevant” pages to fetch in addition to the landing page  
+- `translate`: if `True`, returns the brochure in the requested language  
+- `language`: target language for translation (e.g., `"Spanish"`, `"French"`)
+``
+
 
 ---
 

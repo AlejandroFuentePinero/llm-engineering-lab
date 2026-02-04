@@ -76,6 +76,15 @@ Include details of company culture, customers and careers/jobs if you have the i
 """
 
 
+# TRANSLATOR
+def translate_brochure(language: str = "Spanish") -> str:
+    return (
+        f"\n\nTranslate the brochure into {language}. "
+        "Preserve the markdown structure (headings, lists, tables). "
+        "Do not add code blocks."
+    )
+
+
 # USER PROMPTS
 def get_links_user_prompt(url: str) -> str:
     links = fetch_website_links(url)
@@ -179,7 +188,12 @@ def stream_markdown_typewriter(
 
 
 def brochure_generator(
-    company_name: str, url: str, model: str = "gpt-4.1-mini", max_pages: int = 6
+    company_name: str,
+    url: str,
+    model: str = "gpt-4.1-mini",
+    max_pages: int = 6,
+    translate: bool = False,
+    language: str = "Spanish",
 ) -> str:
     load_dotenv(override=True)
     client = OpenAI()
@@ -187,7 +201,13 @@ def brochure_generator(
     pages_text = fetch_page_and_all_relevant_links(
         url, client=client, model=model, max_pages=max_pages
     )
-    user_prompt = get_brochure_user_prompt(company_name, pages_text)
+
+    if translate:
+        user_prompt = get_brochure_user_prompt(
+            company_name, pages_text
+        ) + translate_brochure(language)
+    else:
+        user_prompt = get_brochure_user_prompt(company_name, pages_text)
 
     stream = client.chat.completions.create(
         model=model,
