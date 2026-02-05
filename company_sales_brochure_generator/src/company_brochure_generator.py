@@ -154,6 +154,7 @@ def fetch_page_and_all_relevant_links(
 
 
 # TYPEWRITER ILLUSION OUTPUT
+# 1 - For notebook stream generation
 def stream_markdown_typewriter(
     stream, min_chars_per_update: int = 40, min_seconds_per_update: float = 0.05
 ) -> str:
@@ -187,14 +188,36 @@ def stream_markdown_typewriter(
     return response
 
 
-def brochure_generator(
+# 2 - For plain text return
+
+
+def stream_to_string(stream) -> str:
+    out = []
+    for chunk in stream:
+        token = chunk.choices[0].delta.content or ""
+        if token:
+            out.append(token)
+    return "".join(out)
+
+
+# 3 - For gradio streaming (IN USE NOW)
+def stream_to_gradio(stream):
+    result = ""
+    for chunk in stream:
+        token = chunk.choices[0].delta.content or ""
+        if token:
+            result += token
+            yield result
+
+
+def brochure_generator_stream(
     company_name: str,
     url: str,
     model: str = "gpt-4.1-mini",
     max_pages: int = 6,
     translate: bool = False,
     language: str = "Spanish",
-) -> str:
+):
     load_dotenv(override=True)
     client = OpenAI()
 
@@ -218,4 +241,4 @@ def brochure_generator(
         stream=True,
     )
 
-    return stream_markdown_typewriter(stream)
+    yield from stream_to_gradio(stream)

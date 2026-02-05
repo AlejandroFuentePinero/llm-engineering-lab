@@ -101,7 +101,15 @@ This two-stage pattern (select → generate) generalises well beyond brochures, 
 - `max_pages`: maximum number of “relevant” pages to fetch in addition to the landing page  
 - `translate`: if `True`, returns the brochure in the requested language  
 - `language`: target language for translation (e.g., `"Spanish"`, `"French"`)
-``
+
+### Demo app (Gradio)
+
+A lightweight Gradio UI is included to demonstrate how the utility can be embedded in an interactive tool (local demo; not production hosted). It calls `brochure_generator(...)` under the hood and renders the brochure as Markdown.
+
+- entry point: `./company_sales_brochure_generator/app.py`
+- run locally:
+  - ensure `OPENAI_API_KEY` is set (via `.env` or environment)
+  - start the app: `python company_sales_brochure_generator/app.py`
 
 
 ---
