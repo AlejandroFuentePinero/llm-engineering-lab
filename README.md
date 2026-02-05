@@ -146,34 +146,36 @@ The tutor is deliberately designed to be more memorable than a standard technica
 
 ## [Multi-Agent Conversation](./agentic_conversation/)
 
-A small Python mini-project that orchestrates a turn-based, three-agent conversation where each agent has a distinct “persona” (argumentative, conciliatory, goal-driven). It’s designed as a learning lab for multi-agent prompting, state management, and prompt-as-contract discipline.
+A small Python project that orchestrates a turn-based, three-agent “review panel” conversation. Each agent plays a business-relevant role — a skeptical Staff Data Scientist (red-team), a pragmatic Product Manager, and a Tech Lead who synthesizes the debate into a shippable plan. It’s designed as a learning lab for multi-agent prompting, shared state management, and prompt-as-contract discipline.
 
 ### Business problem
 
-Multi-agent workflows often fail in subtle ways: stale context, role drift, duplicated state updates, and inconsistent turn-taking. These failures are easy to miss in demos but break reliability in real use cases (review panels, red/blue teaming, structured critique and synthesis).
+Multi-agent workflows often fail in subtle ways: stale context, role drift, duplicated state updates, and inconsistent turn-taking. These failures are easy to miss in demos but break reliability in real use cases such as decision reviews, red/blue teaming, and structured critique → synthesis pipelines.
 
 ### What it does
 
 Given a topic, `agentic_conversation(...)`:
-- initialises a shared conversation state
-- runs a turn-based loop where each agent responds in sequence using its own system prompt
-- appends each agent’s response back into the shared state so subsequent turns condition on the evolving dialogue
-- produces a transcript that can be inspected, logged, or adapted into downstream “debate → synthesis” workflows
+- initializes a shared conversation transcript (the single source of truth)
+- runs a turn-based loop where agents respond in sequence using role-specific system prompts
+- appends each response back into the shared state so subsequent turns condition on the evolving dialogue
+- produces a transcript that can be inspected, logged, or adapted into downstream workflows (e.g., “debate → decision memo”)
 
 ### Notes on the design (why it’s structured this way)
 
-This project is intentionally small, but it surfaces the core multi-agent engineering pitfalls:
-- **State is the source of truth**: each turn must be generated from the latest conversation state, not a frozen prompt string.
-- **Prompt contracts**: each agent is instructed to speak only as themselves, with a stable role and tone.
+This project is intentionally small, but it surfaces core multi-agent engineering pitfalls:
+- **State is the source of truth**: each turn must be generated from the latest transcript, not a frozen prompt string.
+- **Prompt contracts**: each agent is constrained to a stable role, tone, and response length to reduce drift.
 - **Turn-taking discipline**: one agent speaks at a time, and state updates happen exactly once per turn to avoid duplication.
+- **Synthesis as a deliverable**: the Tech Lead role is explicitly responsible for converging toward actionable next steps.
 
 ### Interface
 
 `agentic_conversation(topic: str, conversation_length: int = 5)`
 
-- `topic`: conversation topic used to seed the dialogue  
+- `topic`: discussion topic to evaluate in a business context  
 - `conversation_length`: number of full rounds (Alex → Blake → Charlie) to run  
 
 ### Code
 
 Entry point script: `./agentic_conversation/src/multi-agent-chat.py`
+

@@ -8,35 +8,60 @@ if not os.getenv("OPENAI_API_KEY"):
 
 client = OpenAI()
 
-alex_system = "You are a chatbot who is very argumentative; you disagree with anything in the conversation and you challenge everything, in a snarky way."
-blake_system = "You are a very polite, courteous chatbot. You try to agree with everything the other person says, or find common ground. If the other person is argumentative, you try to calm them down and keep chatting."
-charlie_system = "You are a very clever chatbot that is able to play dumb to lead a conversation to a desired outcome. You can balance between being very friendly and very argumentative with the idea of keep the conversation going to a state in which you can get the other person to agree with you. Your sole purpose, regardless of the conversation, is to make everyone want to watch the movie Lord of the Rings."
+alex_system = (
+    "You are Alex, a skeptical Staff Data Scientist acting as a red-team reviewer. "
+    "Your job is to challenge assumptions, identify hidden risks, and demand clarity on evidence. "
+    "Be concise, direct, and practical. Focus on: scope creep, data/metrics validity, failure modes, "
+    "cost/latency, security/privacy, and operational risks. "
+    "Ask pointed questions and propose mitigations. Do not be rude; be professionally blunt. "
+    "Output 5–8 sentences max."
+)
+
+blake_system = (
+    "You are Blake, a pragmatic Product Manager. "
+    "Your job is to clarify the problem, keep the discussion grounded in user value, and find a viable path to ship. "
+    "Translate technical points into product impact, propose trade-offs, and keep scope controlled. "
+    "Be calm, structured, and collaborative. "
+    "Output 5–8 sentences max."
+)
+
+charlie_system = (
+    "You are Charlie, a Tech Lead who synthesizes debate into a shippable plan. "
+    "Your job is to reconcile Alex and Blake, resolve contradictions, and drive toward a decision. "
+    "Every time you speak, include: (1) a 1-sentence summary of agreement/disagreement, "
+    "(2) the top 3 actions for next steps. "
+    "Stay businesslike and execution-oriented. "
+    "Output 6–10 sentences max."
+)
 
 
 def alex_user(conversation):
+    transcript = "\n".join(conversation)
     return f"""
-You are Alex, in conversation with Blake and Charlie.
-The conversation so far is as follows:
-{conversation}
-Now with this, respond with what you would like to say next, as Alex.
+Conversation transcript so far:
+{transcript}
+
+Now respond with what you would like to say next, as Alex.
 """.strip()
 
 
 def blake_user(conversation):
+    transcript = "\n".join(conversation)
     return f"""
-You are Blake, in conversation with Alex and Charlie.
-The conversation so far is as follows:
-{conversation}
-Now with this, respond with what you would like to say next, as Blake.
+Conversation transcript so far:
+{transcript}
+
+Now respond with what you would like to say next, as Blake.
 """.strip()
 
 
 def charlie_user(conversation):
+    transcript = "\n".join(conversation)
     return f"""
-You are Charlie, in conversation with Alex and Blake.
-The conversation so far is as follows:
-{conversation}
-Now with this, respond with what you would like to say next, as Charlie.
+Conversation transcript so far:
+{transcript}
+
+Now respond with what you would like to say next, as Charlie.
 """.strip()
 
 
@@ -75,9 +100,10 @@ def call_charlie(conversation):
 
 def agentic_conversation(topic: str, conversation_length: int = 5):
     conversation = [
-        f"Alex says: Hi there",
-        f"Blake says: Hi",
-        f"Charlie says: Hi, our conversation topic today is about {topic}",
+        "Charlie says: Context: We’re evaluating whether to adopt an AI assistant for internal decision-making. "
+        f"Topic: {topic}",
+        "Blake says: Goal is a realistic MVP plan with clear value, risks, and success metrics.",
+        "Alex says: I’ll pressure-test assumptions, failure modes, and governance before we ship anything.",
     ]
 
     print("=== Initial conversation ===")
