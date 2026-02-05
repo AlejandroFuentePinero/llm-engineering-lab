@@ -1,4 +1,4 @@
-# LLM Engineering Learning Lab
+# LLM Engineering Lab
 
 <p align="center">
   <img src="media/llm-engineering-cartoon.png" alt="LLM Engineering Learning Lab" width="900">
