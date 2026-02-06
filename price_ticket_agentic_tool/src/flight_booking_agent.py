@@ -133,9 +133,31 @@ price_function = {
     },
 }
 
+set_price_function = {
+    "name": "set_ticket_price",
+    "description": "Update the ticket price in the databse.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "destination_city": {
+                "type": "string",
+                "description": "City to book the ticket to (e.g., 'Tokyo').",
+            },
+            "price": {
+                "type": "number",
+                "description": "Price of the return ticket to the destination city.",
+            },
+        },
+        "required": ["destination_city", "price"],
+        "additionalProperties": False,
+    },
+}
+
+
 tools = [
     {"type": "function", "function": price_function},
     {"type": "function", "function": book_function},
+    {"type": "function", "function": set_price_function},
 ]
 
 # -----------------------
@@ -168,6 +190,13 @@ def handle_tool_calls(message):
             depart_at = arguments.get("depart_at")
             out = book_ticket(city, depart_at)
 
+        elif name == "set_ticket_price":
+            city = arguments.get("destination_city")
+            if city:
+                cities.append(city)
+            price = arguments.get("price")
+            out = set_ticket_price(city, price)
+
         else:
             out = f"Tool error: unknown tool '{name}'."
 
@@ -192,6 +221,13 @@ Only call book_ticket after the user explicitly says yes.
 
 
 def set_ticket_price(city, price):
+    if not city:
+        return "Price update failed: destination city is missing."
+    try:
+        price = float(price)
+    except (TypeError, ValueError):
+        return "Price update failed: price must be a number."
+
     with sqlite3.connect(DB) as conn:
         cursor = conn.cursor()
         cursor.execute(
@@ -200,6 +236,8 @@ def set_ticket_price(city, price):
             (city.lower(), price, price),
         )
         conn.commit()
+
+    return f"Updated price: {city.title()} is now ${price:.2f}."
 
 
 # Ensure tables exist BEFORE seeding
