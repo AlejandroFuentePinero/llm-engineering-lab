@@ -1,7 +1,7 @@
 # LLM Engineering Lab
 
 <p align="center">
-  <img src="media/llm-engineering-cartoon.png" alt="LLM Engineering Learning Lab" width="900">
+  <img src="media/llm_engineer.png" alt="LLM Engineering Lab" width="900">
 </p>
 
 ## Motivation
@@ -24,6 +24,10 @@ The emphasis is control and reuse. Prompts are treated as contracts (tone, lengt
 # Projects
 
 ## [Web Summary Tool](./ai_web_summary_tool/)
+
+<p align="center">
+  <img src="media/web_summary.png" alt="Web summary" width="900">
+</p>
 
 A small, deployable Python utility that turns a webpage URL into a concise Markdown summary using an LLM. It’s designed to be embedded into internal workflows where people need quick, repeatable briefs from unstructured web content.
 
@@ -59,6 +63,10 @@ The tool accepts a `chat_personality` parameter to adapt tone and framing to the
 ---
 
 ## [Company Brochure Generator](./company_sales_brochure_generator/)
+
+<p align="center">
+  <img src="media/brochure_gen.png" alt="Brochure generator" width="900">
+</p>
 
 A reusable Python utility that turns a company website into a short, readable Markdown brochure using an LLM. It’s designed for fast prospecting: generating a consistent “who they are / what they do / why they matter” brief for customers, investors, or recruits — with Markdown output that drops cleanly into docs, notes, CRMs, or downstream workflows.
 
@@ -120,6 +128,10 @@ A lightweight Gradio UI is included to demonstrate how the utility can be embedd
 
 ## [Tech Tutor](./tech_tutor/)
 
+<p align="center">
+  <img src="media/tech_tutor.png" alt="Tech AI tutor" width="900">
+</p>
+
 A small, reusable Python utility that answers questions about data work (data engineering, data science, machine learning, and general software concepts) and explains code in clear Markdown using an LLM. It’s designed for fast learning loops: ask a question, paste a snippet, get a memorable explanation you can drop into notes, docs, or study material.
 
 ### Business problem
@@ -167,6 +179,10 @@ A lightweight Gradio UI is included to demonstrate the tutor in an interactive s
 
 ## [Multi-Agent Conversation](./agentic_conversation/)
 
+<p align="center">
+  <img src="media/agent_conversation.png" alt="Multi-Agent Conversation" width="900">
+</p>
+
 A small Python project that orchestrates a turn-based, three-agent “review panel” conversation. Each agent plays a business-relevant role — a skeptical Staff Data Scientist (red-team), a pragmatic Product Manager, and a Tech Lead who synthesizes the debate into a shippable plan. It’s designed as a learning lab for multi-agent prompting, shared state management, and prompt-as-contract discipline.
 
 ### Business problem
@@ -204,6 +220,10 @@ Entry point script: `./agentic_conversation/src/multi-agent-chat.py`
 
 ## [Sales Intake Copilot](./sales_chatbot_assistant/)
 
+<p align="center">
+  <img src="media/sales_intake.png" alt="Sales Intake Copilot" width="900">
+</p>
+
 A lightweight B2B “sales intake” chatbot that qualifies a lead in a few turns and produces an internal handoff note for a human sales rep. It’s designed to demonstrate a business-realistic pattern: conversational intake on the front-end, structured operational artefacts on the back-end.
 
 ### Business problem
@@ -238,6 +258,10 @@ A lightweight Gradio UI is included to demonstrate the intake flow in an interac
 ---
 
 ## [Flight Booking Agentic Tool](./price_ticket_agentic_tool/)
+
+<p align="center">
+  <img src="media/flight_agent.png" alt="Flight Booking Agentic Tool" width="900">
+</p>
 
 A small Gradio app that demonstrates tool-calling with a real stateful backend: the assistant can quote return ticket prices from SQLite and create mock bookings with booking IDs and departure times. It’s designed as a minimal “agentic” pattern: structured tool schemas + a tool router + a multi-step loop that keeps the model and tool outputs in sync.
 
