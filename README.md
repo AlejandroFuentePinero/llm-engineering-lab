@@ -15,6 +15,8 @@ The emphasis is control and reuse. Prompts are treated as contracts (tone, lengt
 - [Tech Tutor](#tech-tutor)
 - [Multi-Agent Conversation](#multi-agent-conversation)
 - [Sales Intake Copilot](#sales-intake-copilot)
+- [Flight Booking Agentic Tool](#flight-booking-agentic-tool)
+
 
 
 ---
@@ -223,3 +225,53 @@ A lightweight Gradio UI is included to demonstrate the intake flow in an interac
 - run locally:
   - ensure `OPENAI_API_KEY` is set (via `.env`)
   - start the app: `python -m sales_chatbot_assistant.src.app`
+
+---
+
+## [Flight Booking Agentic Tool](./price_ticket_agentic_tool/)
+
+A small Gradio app that demonstrates tool-calling with a real stateful backend: the assistant can quote return ticket prices from SQLite and create mock bookings with booking IDs and departure times. It’s designed as a minimal “agentic” pattern: structured tool schemas + a tool router + a multi-step loop that keeps the model and tool outputs in sync.
+
+### Business problem
+
+In many customer support or sales workflows, users ask simple, repeatable questions (“what’s the price to Tokyo?”) and then want to take an action (“book it”) without a human operator. Pure chat responses are not enough: you need deterministic retrieval and a reliable way to write state (even if mocked) while keeping the conversational experience intact.
+
+### What it does
+
+Given a chat history, the agent:
+- calls `get_ticket_price` to retrieve prices from a SQLite `prices` table
+- asks for confirmation before booking, then calls `book_ticket` to insert a new row into a `bookings` table (autoincrement booking IDs)
+- returns a one-sentence reply to the user, plus:
+  - an autoplay TTS audio version of the reply
+  - an optional destination image generated from the first city referenced in tool calls
+
+### Notes on the design (why it’s structured this way)
+
+This project is intentionally small, but it captures the core mechanics you need for reliable tool use:
+- **Prompt-as-contract**: the system prompt enforces one-sentence answers and “confirm before booking”.
+- **Tool schemas as interfaces**: JSON schemas constrain the model’s tool-call arguments (`destination_city`, optional `depart_at`).
+- **Tool-call loop discipline**: the app executes tool calls, appends both the tool request and tool results back into `messages`, and re-calls the model until it returns a final response (supports multi-step tool usage).
+- **Stateful backend**: SQLite provides deterministic retrieval and a persistent booking record (mock but real state).
+
+### Interface
+
+`booking_agent(history) -> (history, voice_audio_bytes, image)`
+
+- `history`: Gradio “messages” format (`[{role, content}, ...]`)
+- `voice_audio_bytes`: TTS audio bytes for autoplay
+- `image`: PIL image for the destination (optional)
+
+### Demo app (Gradio)
+
+![Flight booking agent — Demo](media/flight_booking_demo.gif)
+
+A lightweight Gradio Blocks UI is included to demonstrate the full loop (chat → tool call → response), with audio + image outputs.
+
+- entry point: `./price_ticket_agentic_tool/src/flight_booking_agent.py`
+- run locally:
+  - ensure `OPENAI_API_KEY` is set (via `.env` or environment)
+  - start the app: `python price_ticket_agentic_tool/src/flight_booking_agent.py`
+
+---
+
+
