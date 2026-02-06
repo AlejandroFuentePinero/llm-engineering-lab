@@ -154,6 +154,15 @@ The tutor is deliberately designed to be more memorable than a standard technica
 - `run_ollama`: enable Ollama backend (requires Ollama installed and running locally)  
 - `ollama_base_url`: OpenAI-compatible local endpoint for Ollama
 
+### Demo app (Gradio)
+
+A lightweight Gradio UI is included to demonstrate the tutor in an interactive setting (local demo; not production hosted). It supports streaming responses, switching between OpenAI and Ollama backends, and optionally pasting code alongside the question.
+
+- entry point: `./tech_tutor/src/app.py`
+- run locally:
+  - ensure `OPENAI_API_KEY` is set (via `.env` or environment)
+  - start the app: `python -m tech_tutor.src.app`
+
 ---
 
 ## [Multi-Agent Conversation](./agentic_conversation/)

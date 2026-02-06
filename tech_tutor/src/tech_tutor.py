@@ -16,19 +16,11 @@ def _chat_complete(
     return (resp.choices[0].message.content or "").strip()
 
 
-def tech_tutor(
+def build_messages(
     question: str,
-    code: Optional[str] = None,
-    favourite_movie: str = "Lord of the Rings",
-    openai_model: str = "gpt-5-nano",
-    ollama_model: str = "llama3.2",
-    run_open_ai: bool = True,
-    run_ollama: bool = True,
-    ollama_base_url: str = "http://localhost:11434/v1",
-    temperature: float = 0.7,
-    show: bool = True,
-    pull_ollama: bool = False,
-):
+    code: Optional[str],
+    favourite_movie: str,
+) -> List[Dict[str, str]]:
     system_prompt = f"""
 You are a technical tutor and storyteller for data work (data engineering, data science, machine learning, and general software concepts).
 
@@ -60,14 +52,31 @@ Length:
 Output must be Markdown (no fenced code blocks).
 """.strip()
 
-    user_msg = question.strip()
+    user_msg = (question or "").strip()
     if code and code.strip():
         user_msg += "\n\nCode to explain:\n" + code.strip()
 
-    messages = [
+    return [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_msg},
     ]
+
+
+def tech_tutor(
+    question: str,
+    code: Optional[str] = None,
+    favourite_movie: str = "Lord of the Rings",
+    openai_model: str = "gpt-5-nano",
+    ollama_model: str = "llama3.2",
+    run_open_ai: bool = True,
+    run_ollama: bool = True,
+    ollama_base_url: str = "http://localhost:11434/v1",
+    temperature: float = 1,
+    show: bool = True,
+    pull_ollama: bool = False,
+):
+
+    messages = build_messages(question, code, favourite_movie)
 
     results: Dict[str, str] = {}
 
