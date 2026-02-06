@@ -14,6 +14,8 @@ The emphasis is control and reuse. Prompts are treated as contracts (tone, lengt
 - [Company Brochure Generator](#company-brochure-generator)
 - [Tech Tutor](#tech-tutor)
 - [Multi-Agent Conversation](#multi-agent-conversation)
+- [Sales Intake Copilot](#sales-intake-copilot)
+
 
 ---
 
@@ -187,3 +189,37 @@ This project is intentionally small, but it surfaces core multi-agent engineerin
 
 Entry point script: `./agentic_conversation/src/multi-agent-chat.py`
 
+---
+
+## [Sales Intake Copilot](./sales_chatbot_assistant/)
+
+A lightweight B2B “sales intake” chatbot that qualifies a lead in a few turns and produces an internal handoff note for a human sales rep. It’s designed to demonstrate a business-realistic pattern: conversational intake on the front-end, structured operational artefacts on the back-end.
+
+### Business problem
+
+In many B2B workflows, inbound leads arrive with incomplete context. Sales teams waste time in back-and-forth messages to extract basic qualification details (use case, timing, size, decision ownership), and handoffs between marketing → SDR → AE are often inconsistent or missing key information.
+
+### What it does
+
+Given a user message, the chatbot:
+- responds naturally to the user and asks a small number of targeted qualifying questions
+- captures key lead attributes (use case, industry, company size, timeline, budget, authority)
+- produces an internal “handoff note” in a consistent template so a human rep can take over quickly
+- avoids inventing details
+
+### Interface
+
+`sales_assistant_stream(message, history)`
+
+- `message`: the latest user message  
+- `history`: prior turns in Gradio “messages” format (`[{role, content}, ...]`)  
+- `model`: chat model used to generate the reply + handoff note (currently `gpt-4.1-mini`)
+
+### Demo app (Gradio)
+
+A lightweight Gradio UI is included to demonstrate the intake flow in an interactive setting (local demo; not production hosted). It calls `sales_assistant_stream(...)` under the hood.
+
+- entry point: `./sales_chatbot_assistant/src/app.py`
+- run locally:
+  - ensure `OPENAI_API_KEY` is set (via `.env`)
+  - start the app: `python -m sales_chatbot_assistant.src.app`
