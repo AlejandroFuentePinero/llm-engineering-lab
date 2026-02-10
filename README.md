@@ -16,6 +16,9 @@ The emphasis is control and reuse. Prompts are treated as contracts (tone, lengt
 - [Multi-Agent Conversation](#multi-agent-conversation)
 - [Sales Intake Copilot](#sales-intake-copilot)
 - [Flight Booking Agentic Tool](#flight-booking-agentic-tool)
+- [Meeting Minute Generator](#meeting-minute-generator)
+- [Synthetic A/B Dataset Generator](#synthetic-ab-dataset-generator)
+
 
 
 
@@ -339,5 +342,38 @@ This tool prioritises reliability over creativity:
 - **Low-temperature generation** to reduce run-to-run variability
 - **Faithfulness guardrails** to avoid invented metadata or action items
 - **Transcript persistence** to diagnose whether issues are transcription- or summarisation-driven
+
+---
+
+## [Synthetic A/B Dataset Generator](./synthetic_data_generator/)
+
+<p align="center">
+  <img src="media/data_generator.png" alt="Synthetic A/B Dataset Generator" width="900">
+</p>
+
+A lightweight Gradio app that generates a compact synthetic A/B conversion dataset (CSV) plus a Markdown “dataset card” using an LLM. It’s designed for quick demo datasets: small, usable tables with a clear schema, controlled treatment effect, and immediately readable documentation. Ideal for model testing and benchmarking.
+
+### Business problem
+
+Teams often need realistic A/B-style datasets for prototyping dashboards, testing analytics pipelines, teaching experimentation concepts, or building demos. Real production data is sensitive, slow to access, and rarely shareable. Synthetic data solves this — but only if it is structured, consistent, and documented enough to be usable.
+
+### What it does
+
+Given a set of knobs, the generator:
+- uses a schema-as-contract to force a fixed set of columns and allowed values
+- generates a CSV dataset with a control and treatment variant and a binary conversion outcome
+- produces a Markdown dataset card summarising the dataset (shape, column dictionary, allocation and conversion rates, observed lift)
+- saves both artefacts to disk (`.csv` and `_metadata.md`) and renders the dataset card in the UI
+
+### Demo app (Gradio)
+
+<p align="center">
+  <img src="media/ab_data_demo.png" alt="Synthetic A/B Dataset Generator Demo" width="900">
+</p>
+
+- entry point: `./synthetic_data_generator/src/ab_data_generator.py`
+- run locally:
+  - ensure `OPENAI_API_KEY` is set (via `.env` or environment)
+  - start the app: `python synthetic_data_generator/src/ab_data_generator.py`
 
 ---
