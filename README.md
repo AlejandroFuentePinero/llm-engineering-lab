@@ -307,4 +307,37 @@ A lightweight Gradio Blocks UI is included to demonstrate the full loop (chat �
 
 ---
 
+## [Meeting Minute Generator](./meeting_minute_audio/)
 
+<p align="center">
+  <img src="media/meeting_minute.png" alt="Meeting minute generator" width="900">
+</p>
+
+A Python utility that turns meeting audio into structured Markdown minutes using an LLM. It’s designed for workflows where meetings happen frequently, recordings exist, and teams need consistent documentation without relying on manual note-taking.
+
+### Business problem
+
+Minutes are a core operational artefact: they capture decisions, context, and action items. When they are missing or inconsistent, teams lose accountability, repeat discussions, and waste time rebuilding context for stakeholders who weren’t in the room.
+
+### What it does
+
+Given an audio recording, `meeting_minute_generator(...)`:
+- transcribes the meeting audio
+- generates minutes in Markdown with a fixed, contract-driven structure:
+  - summary (attendees/date/location if stated)
+  - key discussion points (controlled granularity)
+  - takeaways
+  - action items with owners and due dates (if stated)
+- avoids inventing details: missing information is explicitly marked as *Not specified*
+- saves the exact transcript used for each run for traceability and debugging
+- renders Markdown in notebooks or prints clean output in terminal runs
+
+### Notes on the design (why it’s structured this way)
+
+This tool prioritises reliability over creativity:
+- **Prompt-as-contract** to enforce consistent format and detail level
+- **Low-temperature generation** to reduce run-to-run variability
+- **Faithfulness guardrails** to avoid invented metadata or action items
+- **Transcript persistence** to diagnose whether issues are transcription- or summarisation-driven
+
+---
