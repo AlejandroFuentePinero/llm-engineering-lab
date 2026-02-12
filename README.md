@@ -18,6 +18,7 @@ The emphasis is control and reuse. Prompts are treated as contracts (tone, lengt
 - [Flight Booking Agentic Tool](#flight-booking-agentic-tool)
 - [Meeting Minute Generator](#meeting-minute-generator)
 - [Synthetic A/B Dataset Generator](#synthetic-ab-dataset-generator)
+- [LLM Code Performance Benchmark](#llm-code-performance-benchmark)
 
 
 
@@ -375,5 +376,68 @@ Given a set of knobs, the generator:
 - run locally:
   - ensure `OPENAI_API_KEY` is set (via `.env` or environment)
   - start the app: `python synthetic_data_generator/src/ab_data_generator.py`
+
+---
+
+## [LLM Code Performance Benchmark](./llm_code_performance_benchmark/)
+
+<p align="center">
+  <img src="media/code_performance.png" alt="LLM Code Performance Benchmark" width="900">
+</p>
+
+A Python benchmark that compares LLMs on a practical “speedup” task: translating a Python workload into high-performance C++ and measuring the runtime improvement. The output is a simple model comparison table (result consistency + runtime + speedup), intended as a lightweight way to choose an LLM for a specific optimisation problem.
+
+### Business problem
+
+Many teams have Python code that is correct but too slow in production or in critical research workflows. Rewriting hot paths in C++ is a classic solution, but it is time-consuming and requires specialist expertise.
+
+LLMs can generate C++ ports quickly, but performance and correctness vary by model and by task. This creates a model-selection problem: for a given workload, which model produces the fastest correct implementation?
+
+### What it does
+
+Given a Python benchmark script, the tool:
+- runs the Python code as the baseline and captures:
+  - printed output (e.g., `Result: ...`)
+  - measured runtime (`Execution Time: ...`)
+- asks each target LLM to port the Python into C++ with a “performance-first” prompt contract
+- compiles the generated C++ and executes it
+- parses result and runtime from the program output
+- reports speedup as `python_runtime / cpp_runtime` per model
+
+The intended usage is to “pick the best model for this business problem / workload class”.
+
+### Notes on the design (why it’s structured this way)
+
+This is deliberately minimal and practical:
+- **Python is the reference**: the baseline result is the target behaviour.
+- **Prompt-as-contract**: the LLM is constrained to output only C++ code designed for speed.
+- **Runtime is measured inside the program**: each C++ output prints its own execution time, so the comparison stays close to the workload.
+- **Per-task selection**: different optimisation tasks can favour different models; this benchmark is meant to be re-run per workload type.
+
+### Interface
+
+`python_to_cpp_performance(claude_model="…", openai_model="…", python="…") -> dict`
+
+Returns a dictionary containing:
+- Python result + runtime
+- model results + runtimes
+- speedup factors for each model vs Python
+
+### Inputs and outputs (contract)
+
+The benchmark assumes the Python script:
+- sets `result` and `execution_time` in the global namespace
+- prints a consistent format containing:
+  - `Result: ...`
+  - `Execution Time: ... seconds`
+
+The generated C++ is expected to replicate the same printed structure so parsing remains consistent across models.
+
+### How to run (local)
+
+- set `OPENAI_API_KEY` (and optionally `ANTHROPIC_API_KEY`) via `.env` or environment
+- run the benchmark entry point (example):
+  - `python -m llm_code_performance_benchmark.src.run`
+
 
 ---

@@ -102,10 +102,6 @@ def build_ab_messages_with_metadata(
     device_eff = generation_config["effects"]["device_logodds_effect_mobile"]
     sess_eff = generation_config["effects"]["session_length_logodds_per_60s"]
 
-    # assume these exist earlier in the function
-    # expected_header, dataset_name, n_cols, device_eff, sess_eff
-    # baseline_conversion_rate, lift_abs, treatment_rate, seed, generation_config, schema
-
     system_prompt = (
         "You generate synthetic datasets that must match the provided schema exactly.\n"
         "Return EXACTLY two sections using the delimiters below and nothing else.\n\n"
