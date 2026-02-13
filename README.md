@@ -385,59 +385,69 @@ Given a set of knobs, the generator:
   <img src="media/code_performance.png" alt="LLM Code Performance Benchmark" width="900">
 </p>
 
-A Python benchmark that compares LLMs on a practical “speedup” task: translating a Python workload into high-performance C++ and measuring the runtime improvement. The output is a simple model comparison table (result consistency + runtime + speedup), intended as a lightweight way to choose an LLM for a specific optimisation problem.
+A Python benchmark that compares LLMs on a practical “speedup” task: translating a Python workload into high-performance C++ and measuring the runtime improvement. It supports both hosted models (OpenAI / Anthropic) and open-source models (via local Ollama or OpenRouter), and saves each model’s generated C++ as an artefact for inspection and reproducibility.
 
 ### Business problem
 
 Many teams have Python code that is correct but too slow in production or in critical research workflows. Rewriting hot paths in C++ is a classic solution, but it is time-consuming and requires specialist expertise.
 
-LLMs can generate C++ ports quickly, but performance and correctness vary by model and by task. This creates a model-selection problem: for a given workload, which model produces the fastest correct implementation?
+LLMs can generate C++ ports quickly, but performance and correctness vary by model and by task. This creates a model-selection problem: for a given workload, which model produces the fastest correct implementation — and how often does it fail?
 
 ### What it does
 
 Given a Python benchmark script, the tool:
 - runs the Python code as the baseline and captures:
-  - printed output (e.g., `Result: ...`)
-  - measured runtime (`Execution Time: ...`)
-- asks each target LLM to port the Python into C++ with a “performance-first” prompt contract
-- compiles the generated C++ and executes it
-- parses result and runtime from the program output
+  - the computed `result`
+  - the measured `execution_time`
+- asks each target LLM to port the Python into C++ with a performance-first prompt contract
+- writes each model output to `{model}_main.cpp` (safe filename) as a persistent artefact
+- compiles and executes the generated binary
+- parses the C++ program output to extract:
+  - `Result: ...`
+  - `Execution Time: ... seconds`
 - reports speedup as `python_runtime / cpp_runtime` per model
 
-The intended usage is to “pick the best model for this business problem / workload class”.
+It also distinguishes failure modes during evaluation:
+- **LLM compile error**: model produced invalid / non-compilable C++
+- **LLM runtime error**: binary compiled but crashed / exited non-zero
+
+This is useful when comparing models, because a “fast” model that fails often is not a good production choice.
+
+### Open-source model inclusion
+
+Open-source models can be compared alongside hosted models using OpenAI-compatible clients:
+- **Ollama (local)** for running models on your machine with an OpenAI-style API endpoint
+- **OpenRouter** for hosted access to open models behind a unified API
+
+This makes it easy to benchmark “paid vs local vs open” on the same workload and hardware.
 
 ### Notes on the design (why it’s structured this way)
 
 This is deliberately minimal and practical:
-- **Python is the reference**: the baseline result is the target behaviour.
-- **Prompt-as-contract**: the LLM is constrained to output only C++ code designed for speed.
-- **Runtime is measured inside the program**: each C++ output prints its own execution time, so the comparison stays close to the workload.
+- **Python is the reference**: baseline behaviour defines correctness.
+- **Prompt-as-contract**: models must return only C++ code, optimised for speed.
+- **Artefact persistence**: every model’s C++ is saved so you can diff, audit, and reuse.
+- **Failure-aware benchmarking**: compile/runtime failures are attributed to the model output, not silently mixed into system errors.
 - **Per-task selection**: different optimisation tasks can favour different models; this benchmark is meant to be re-run per workload type.
 
 ### Interface
 
-`python_to_cpp_performance(claude_model="…", openai_model="…", python="…") -> dict`
+Batch benchmark:
+`python_to_cpp_performance(models=[...], python="...", ui_launch=False) -> dict`
 
-Returns a dictionary containing:
-- Python result + runtime
-- model results + runtimes
-- speedup factors for each model vs Python
+- returns Python baseline result/runtime plus, per model:
+  - status (`ok`, `llm_compile_error`, `llm_runtime_error`, `skipped_no_client`, etc.)
+  - parsed result/runtime when successful
+  - speedup factor vs Python
 
-### Inputs and outputs (contract)
+### Demo app (Gradio)
 
-The benchmark assumes the Python script:
-- sets `result` and `execution_time` in the global namespace
-- prints a consistent format containing:
-  - `Result: ...`
-  - `Execution Time: ... seconds`
+A lightweight Gradio UI is included for interactive use: paste Python code, select a model, and generate the C++ port as a quick inspection / iteration loop (single-model conversion, not the full benchmark loop).
 
-The generated C++ is expected to replicate the same printed structure so parsing remains consistent across models.
-
-### How to run (local)
-
-- set `OPENAI_API_KEY` (and optionally `ANTHROPIC_API_KEY`) via `.env` or environment
-- run the benchmark entry point (example):
-  - `python -m llm_code_performance_benchmark.src.run`
-
+- entry point: `python_to_cpp_performance(ui_launch=True)`
+- run locally:
+  - ensure required keys are set (`OPENAI_API_KEY` and/or `ANTHROPIC_API_KEY`, plus optional `OPENROUTER_API_KEY`)
+  - install UI dependency: `pip install gradio`
+  - launch: call the function with `ui_launch=True` (opens in browser)
 
 ---
