@@ -9,7 +9,7 @@ This repo is where I build LLM capabilities that hold up in real work. It presen
 
 The emphasis is control and reuse. Prompts are treated as contracts (tone, length, structure), multi-step pipelines are used when they improve relevance, and outputs are produced as Markdown/JSON so they drop cleanly into docs, notes, tickets, and downstream tools.
 
-## Contents
+## Table of contents
 - [Web Summary Tool](#web-summary-tool)
 - [Company Brochure Generator](#company-brochure-generator)
 - [Tech Tutor](#tech-tutor)
@@ -19,8 +19,6 @@ The emphasis is control and reuse. Prompts are treated as contracts (tone, lengt
 - [Meeting Minute Generator](#meeting-minute-generator)
 - [Synthetic A/B Dataset Generator](#synthetic-ab-dataset-generator)
 - [LLM Code Performance Benchmark](#llm-code-performance-benchmark)
-
-
 
 
 ---
