@@ -19,6 +19,7 @@ The emphasis is control and reuse. Prompts are treated as contracts (tone, lengt
 - [Meeting Minute Generator](#meeting-minute-generator)
 - [Synthetic A/B Dataset Generator](#synthetic-ab-dataset-generator)
 - [LLM Code Performance Benchmark](#llm-code-performance-benchmark)
+- [Expert Knowledge Worker (RAG Chatbot)](#expert-knowledge-worker-rag-chatbot)
 
 
 ---
@@ -447,5 +448,115 @@ A lightweight Gradio UI is included for interactive use: paste Python code, sele
   - ensure required keys are set (`OPENAI_API_KEY` and/or `ANTHROPIC_API_KEY`, plus optional `OPENROUTER_API_KEY`)
   - install UI dependency: `pip install gradio`
   - launch: call the function with `ui_launch=True` (opens in browser)
+
+---
+
+## [Expert Knowledge Worker (RAG Chatbot)](./RAG_expert_knowledge_worker/)
+
+<p align="center">
+  <img src="media/rag_chatbot.png" alt="Insurellm Expert Assistant" width="900">
+</p>
+
+A lightweight Retrieval-Augmented Generation (RAG) assistant for answering questions about a company knowledge base (Insurellm). It combines a document-ingestion pipeline, a vector database, and a Gradio chat UI that shows both the assistant response and the retrieved source context side-by-side for transparency.
+
+### Business problem
+
+Internal knowledge is often spread across Markdown docs, notes, and operational writeups. Team members need quick answers, but manually searching across files is slow and inconsistent. A plain chatbot is also risky because it can answer without grounding in the actual company documentation.
+
+This project addresses that by retrieving relevant knowledge-base chunks first, then answering with the LLM using that retrieved context.
+
+### What it does
+
+The project is split into two core workflows:
+
+- **Ingestion (`ingest.py`)**
+  - loads Markdown files from a `knowledge-base/` directory (grouped by subfolders)
+  - tags each document with metadata (including `doc_type`)
+  - chunks documents using a recursive text splitter
+  - creates embeddings and stores them in a persistent Chroma vector database (`vector_db/`)
+  - rebuilds the collection when re-ingesting
+
+- **Question answering (`answer.py` + `app.py`)**
+  - retrieves relevant chunks from the vector DB for a user question
+  - combines prior user messages with the current question to improve retrieval context
+  - injects retrieved context into a system prompt
+  - generates a grounded answer with a chat model
+  - returns both:
+    - the assistant answer
+    - the retrieved source chunks (displayed in the UI)
+
+- **Gradio UI (`app.py`)**
+  - chat interface for user questions
+  - side panel showing retrieved context and source metadata for inspection
+  - simple conversational loop with message history
+
+### Notes on the design (why it’s structured this way)
+
+This is a compact but practical RAG pattern for internal assistants:
+
+- **Separate ingestion from answering**
+  - document parsing / chunking / embedding happens once (or on refresh)
+  - chat-time requests only perform retrieval + generation, which keeps the UI responsive
+
+- **Grounded answers with visible evidence**
+  - the assistant answer is shown alongside the retrieved context
+  - this makes debugging and trust assessment easier than a “black-box” chat response
+
+- **Conversation-aware retrieval**
+  - retrieval uses the current question plus prior user turns, which helps when users ask follow-up questions with ellipsis (e.g., “what about pricing?”)
+
+- **Prompt-as-contract**
+  - the system prompt explicitly frames the assistant as an Insurellm representative and instructs it to use context when relevant and admit uncertainty when needed
+
+### Retrieval / ingestion configuration (current defaults)
+
+- **Chat model**: `gpt-4.1-nano`
+- **Embedding model**: `text-embedding-3-large`
+- **Vector store**: Chroma (persistent local directory)
+- **Retrieval depth**: `k = 10`
+- **Chunking**: `chunk_size=500`, `chunk_overlap=200`
+
+### Interface
+
+Core answering function:
+
+`answer_question(question: str, history: list[dict] = []) -> tuple[str, list[Document]]`
+
+- `question`: latest user question  
+- `history`: prior conversation turns in message-dict format (`[{role, content}, ...]`)  
+- returns:
+  - `answer` (LLM response string)
+  - `docs` (retrieved LangChain `Document` objects)
+
+UI chat callback (Gradio):
+
+`chat(history) -> (history, formatted_context_html)`
+
+- appends the assistant response to the chat history
+- formats retrieved documents into a “Relevant Context” panel with sources
+
+### Expected project structure (conceptual)
+
+- `app.py` — Gradio UI entry point
+- `src/answer.py` (or equivalent) — retrieval + answer generation
+- `src/ingest.py` (or equivalent) — ingestion and vector DB build
+- `knowledge-base/` — Markdown source documents (subfolders allowed)
+- `vector_db/` — persisted Chroma database (generated)
+
+### Run locally
+
+1. Create and activate your environment
+2. Install dependencies (LangChain, Chroma, Gradio, OpenAI, dotenv, etc.)
+3. Set environment variables (at minimum `OPENAI_API_KEY`)
+4. Add your company Markdown files under `knowledge-base/`
+5. Build the vector store:
+   - `python ingest.py`  
+   (or your repo path equivalent, e.g. `python src/ingest.py`)
+6. Launch the chat UI:
+   - `python app.py`
+
+### Demo app (Gradio)
+
+A lightweight Gradio interface is included to demonstrate the full RAG loop (chat → retrieve → answer + visible context). It is intended as a local demo, but the architecture maps cleanly to internal support / knowledge-assistant use cases.
 
 ---
