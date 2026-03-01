@@ -457,7 +457,7 @@ A lightweight Gradio UI is included for interactive use: paste Python code, sele
   <img src="media/rag_chatbot.png" alt="Insurellm Expert Assistant" width="900">
 </p>
 
-A lightweight Retrieval-Augmented Generation (RAG) assistant for answering questions about a company knowledge base (Insurellm). It combines a document-ingestion pipeline, a vector database, and a Gradio chat UI that shows both the assistant response and the retrieved source context side-by-side for transparency.
+A lightweight Retrieval-Augmented Generation (RAG) assistant for answering questions about a company knowledge base (Insurellm). It combines a document-ingestion pipeline, a vector database, a Gradio chat UI that shows both the assistant response and the retrieved source context side-by-side for transparency, and an evaluation dashboard that measures retrieval and answer quality against a labelled test set.
 
 ### Business problem
 
@@ -469,14 +469,14 @@ This project addresses that by retrieving relevant knowledge-base chunks first, 
 
 The project is split into two core workflows:
 
-- **Ingestion (`ingest.py`)**
+- **Ingestion (`src/implementation/ingest.py`)**
   - loads Markdown files from a `knowledge-base/` directory (grouped by subfolders)
   - tags each document with metadata (including `doc_type`)
   - chunks documents using a recursive text splitter
   - creates embeddings and stores them in a persistent Chroma vector database (`vector_db/`)
   - rebuilds the collection when re-ingesting
 
-- **Question answering (`answer.py` + `app.py`)**
+- **Question answering (`src/implementation/answer.py` + `app.py`)**
   - retrieves relevant chunks from the vector DB for a user question
   - combines prior user messages with the current question to improve retrieval context
   - injects retrieved context into a system prompt
@@ -538,10 +538,26 @@ UI chat callback (Gradio):
 ### Expected project structure (conceptual)
 
 - `app.py` — Gradio UI entry point
-- `src/answer.py` (or equivalent) — retrieval + answer generation
-- `src/ingest.py` (or equivalent) — ingestion and vector DB build
+- `src/implementation/answer.py` — retrieval + answer generation
+- `src/implementation/ingest.py` — ingestion and vector DB build
 - `knowledge-base/` — Markdown source documents (subfolders allowed)
 - `vector_db/` — persisted Chroma database (generated)
+
+### Evaluation system
+
+A standalone evaluation suite (`evaluator.py` + `src/evaluation/`) measures both retrieval and answer quality against a labelled test set (`tests.jsonl`).
+
+**Retrieval evaluation** — for each test question, the system retrieves the top-k chunks and computes:
+- **MRR** (Mean Reciprocal Rank): rank position of the first chunk containing each expected keyword
+- **nDCG** (Normalized Discounted Cumulative Gain): position-weighted keyword coverage across the result list
+- **Keyword coverage**: percentage of expected keywords found anywhere in the retrieved results
+
+**Answer evaluation** — the generated answer is compared against a reference answer by an LLM judge (`gpt-4.1-nano`) using structured outputs, scoring three dimensions on a 1–5 scale:
+- **Accuracy**: factual correctness relative to the reference answer
+- **Completeness**: coverage of all key information from the reference answer
+- **Relevance**: how directly the answer addresses the question without unnecessary additions
+
+Results are displayed in a Gradio dashboard (`evaluator.py`) with colour-coded metrics (green / amber / red) and a per-category bar chart. A CLI mode (`eval.py <test_row_number>`) is also available for inspecting individual test cases.
 
 ### Run locally
 
@@ -550,10 +566,11 @@ UI chat callback (Gradio):
 3. Set environment variables (at minimum `OPENAI_API_KEY`)
 4. Add your company Markdown files under `knowledge-base/`
 5. Build the vector store:
-   - `python ingest.py`  
-   (or your repo path equivalent, e.g. `python src/ingest.py`)
+   - `python src/implementation/ingest.py`
 6. Launch the chat UI:
    - `python app.py`
+7. Launch the evaluation dashboard (optional):
+   - `python evaluator.py`
 
 ### Demo app (Gradio)
 

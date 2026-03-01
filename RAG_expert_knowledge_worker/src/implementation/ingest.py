@@ -13,8 +13,8 @@ from dotenv import load_dotenv
 
 # --- Names and Paths
 
-DB_NAME = str(Path(__file__).parent.parent / "vector_db")
-KNOWLEDGE_BASE = str(Path(__file__).parent.parent / "knowledge-base")
+DB_NAME = str(Path(__file__).parent.parent.parent / "vector_db")
+KNOWLEDGE_BASE = str(Path(__file__).parent.parent.parent / "knowledge-base")
 
 load_dotenv(override=True)
 
