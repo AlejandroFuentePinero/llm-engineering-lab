@@ -6,3 +6,5 @@ __pycache__/
 *.ipynb
 notebooks/
 vector_db/
+preprocessed_db/
+recall_lab/

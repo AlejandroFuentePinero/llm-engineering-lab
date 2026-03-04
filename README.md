@@ -10,6 +10,7 @@ This repo is where I build LLM capabilities that hold up in real work. It presen
 The emphasis is control and reuse. Prompts are treated as contracts (tone, length, structure), multi-step pipelines are used when they improve relevance, and outputs are produced as Markdown/JSON so they drop cleanly into docs, notes, tickets, and downstream tools.
 
 ## Table of contents
+- [Expert Knowledge Worker (RAG Chatbot)](#expert-knowledge-worker-rag-chatbot)
 - [Web Summary Tool](#web-summary-tool)
 - [Company Brochure Generator](#company-brochure-generator)
 - [Tech Tutor](#tech-tutor)
@@ -19,12 +20,185 @@ The emphasis is control and reuse. Prompts are treated as contracts (tone, lengt
 - [Meeting Minute Generator](#meeting-minute-generator)
 - [Synthetic A/B Dataset Generator](#synthetic-ab-dataset-generator)
 - [LLM Code Performance Benchmark](#llm-code-performance-benchmark)
-- [Expert Knowledge Worker (RAG Chatbot)](#expert-knowledge-worker-rag-chatbot)
 
 
 ---
 
 # Projects
+
+## [Expert Knowledge Worker (RAG Chatbot)](./RAG_expert_knowledge_worker/)
+
+<p align="center">
+  <img src="media/rag_chatbot.png" alt="Insurellm Expert Assistant" width="900">
+</p>
+
+A lightweight Retrieval-Augmented Generation (RAG) assistant for answering questions about a company knowledge base (Insurellm). It combines a document-ingestion pipeline, a vector database, a Gradio chat UI that shows both the assistant response and the retrieved source context side-by-side for transparency, and an evaluation dashboard that measures retrieval and answer quality against a labelled test set.
+
+### Business problem
+
+Internal knowledge is often spread across Markdown docs, notes, and operational writeups. Team members need quick answers, but manually searching across files is slow and inconsistent. A plain chatbot is also risky because it can answer without grounding in the actual company documentation.
+
+This project addresses that by retrieving relevant knowledge-base chunks first, then answering with the LLM using that retrieved context.
+
+### What it does
+
+The project is split into two core workflows:
+
+- **Ingestion (`src/implementation/ingest.py`)**
+  - loads Markdown files from a `knowledge-base/` directory (grouped by subfolders)
+  - tags each document with metadata (including `doc_type`)
+  - chunks documents using a recursive text splitter
+  - creates embeddings and stores them in a persistent Chroma vector database (`vector_db/`)
+  - rebuilds the collection when re-ingesting
+
+- **Question answering (`src/implementation/answer.py` + `app.py`)**
+  - retrieves relevant chunks from the vector DB for a user question
+  - combines prior user messages with the current question to improve retrieval context
+  - injects retrieved context into a system prompt
+  - generates a grounded answer with a chat model
+  - returns both:
+    - the assistant answer
+    - the retrieved source chunks (displayed in the UI)
+
+- **Gradio UI (`app.py`)**
+  - chat interface for user questions
+  - side panel showing retrieved context and source metadata for inspection
+  - simple conversational loop with message history
+
+### Notes on the design (why it's structured this way)
+
+This is a compact but practical RAG pattern for internal assistants:
+
+- **Separate ingestion from answering**
+  - document parsing / chunking / embedding happens once (or on refresh)
+  - chat-time requests only perform retrieval + generation, which keeps the UI responsive
+
+- **Grounded answers with visible evidence**
+  - the assistant answer is shown alongside the retrieved context
+  - this makes debugging and trust assessment easier than a "black-box" chat response
+
+- **Conversation-aware retrieval**
+  - retrieval uses the current question plus prior user turns, which helps when users ask follow-up questions with ellipsis (e.g., "what about pricing?")
+
+- **Prompt-as-contract**
+  - the system prompt explicitly frames the assistant as an Insurellm representative and instructs it to use context when relevant and admit uncertainty when needed
+
+### Retrieval / ingestion configuration (current defaults)
+
+- **Chat model**: `gpt-4.1-nano`
+- **Embedding model**: `text-embedding-3-large`
+- **Vector store**: Chroma (persistent local directory)
+- **Retrieval depth**: `k = 10`
+- **Chunking**: `chunk_size=500`, `chunk_overlap=200`
+
+### Interface
+
+Core answering function:
+
+`answer_question(question: str, history: list[dict] = []) -> tuple[str, list[Document]]`
+
+- `question`: latest user question
+- `history`: prior conversation turns in message-dict format (`[{role, content}, ...]`)
+- returns:
+  - `answer` (LLM response string)
+  - `docs` (retrieved LangChain `Document` objects)
+
+UI chat callback (Gradio):
+
+`chat(history) -> (history, formatted_context_html)`
+
+- appends the assistant response to the chat history
+- formats retrieved documents into a "Relevant Context" panel with sources
+
+### Expected project structure (conceptual)
+
+- `app.py` — Gradio UI entry point
+- `src/implementation/answer.py` — retrieval + answer generation
+- `src/implementation/ingest.py` — ingestion and vector DB build
+- `knowledge-base/` — Markdown source documents (subfolders by category)
+- `knowledge-base/summaries/` — LLM-generated category summaries for hierarchical RAG (generated at ingest time)
+- `vector_db/` — persisted Chroma database (generated)
+
+### Evaluation system
+
+A standalone evaluation suite (`evaluator.py` + `src/evaluation/`) measures both retrieval and answer quality against a labelled test set (`tests.jsonl`).
+
+**Retrieval evaluation** — for each test question, the system retrieves the top-k chunks and computes:
+- **MRR** (Mean Reciprocal Rank): rank position of the first chunk containing each expected keyword
+- **nDCG** (Normalized Discounted Cumulative Gain): position-weighted keyword coverage across the result list
+- **Keyword coverage**: percentage of expected keywords found anywhere in the retrieved results
+
+**Answer evaluation** — the generated answer is compared against a reference answer by an LLM judge (`gpt-4.1-nano`) using structured outputs, scoring three dimensions on a 1–5 scale:
+- **Accuracy**: factual correctness relative to the reference answer
+- **Completeness**: coverage of all key information from the reference answer
+- **Relevance**: how directly the answer addresses the question without unnecessary additions
+
+Results are displayed in a Gradio dashboard (`evaluator.py`) with colour-coded metrics (green / amber / red) and a per-category bar chart. A CLI mode (`eval.py <test_row_number>`) is also available for inspecting individual test cases.
+
+### Run locally
+
+1. Create and activate your environment
+2. Install dependencies (LangChain, Chroma, Gradio, OpenAI, dotenv, etc.)
+3. Set environment variables (at minimum `OPENAI_API_KEY`)
+4. Add your company Markdown files under `knowledge-base/`
+5. Build the vector store:
+   - `python src/implementation/ingest.py`
+6. Launch the chat UI:
+   - `python app.py`
+7. Launch the evaluation dashboard (optional):
+   - `python evaluator.py`
+
+### Demo app (Gradio)
+
+A lightweight Gradio interface is included to demonstrate the full RAG loop (chat → retrieve → answer + visible context). It is intended as a local demo, but the architecture maps cleanly to internal support / knowledge-assistant use cases.
+
+### Optimised RAG pipeline (`optimised_ingest.py` + `optimised_answer.py`)
+
+A drop-in replacement for the LangChain baseline that removes framework abstractions and improves both ingestion quality and retrieval precision. No LangChain dependency — uses the OpenAI SDK, ChromaDB, and LiteLLM directly.
+
+**Ingestion (`optimised_ingest.py`)**
+
+Instead of a fixed-size recursive character splitter, an LLM reads each document and decides how to chunk it. Each chunk is returned as a structured object with three fields:
+
+- **`headline`**: a short label optimised to match likely query phrasing
+- **`summary`**: a few sentences synthesising what the chunk answers
+- **`original_text`**: the verbatim source passage
+
+All three fields are concatenated and embedded together, so each vector encodes both the dense original content and the LLM-generated surface forms most likely to be retrieved. Documents are processed in parallel using `multiprocessing.Pool` for throughput.
+
+The ingestion pipeline also implements **hierarchical RAG** through a summary generation step that runs before chunking. For each subfolder in `knowledge-base/`, an LLM reads all documents in that category and produces a single aggregated `summary_{category}.md` file saved to `knowledge-base/summaries/`. These summaries are designed to answer holistic questions — totals, counts, averages, and rankings — that are hard to answer from individual fine-grained chunks alone. Summary files are stored as single, unsplit documents in the same ChromaDB collection as regular chunks, so they surface automatically via semantic search when a query requires cross-document aggregation. No changes to the retrieval pipeline are needed: the reranker naturally promotes summaries for holistic queries and demotes them for specific fact lookups.
+
+**Retrieval and answering (`optimised_answer.py`)**
+
+The baseline does a single vector lookup on the raw user question. The optimised pipeline adds four stages before the final answer:
+
+1. **Query rewriting** — the user's question is rewritten into a tighter KB query, stripping conversational noise and sharpening retrieval intent
+2. **Chunk merging** — results from the original and rewritten query (`RETRIEVAL_K = 20` each) are deduplicated into a single pool
+3. **LLM reranking** — a dedicated reranker call receives the merged pool and returns a `RankOrder` structured output, re-ordering chunks by relevance before the top `FINAL_K = 10` are passed to the answer model
+
+Retry logic via `tenacity` wraps all LLM calls to handle rate limits gracefully.
+
+To switch to the optimised pipeline, `app.py` only requires a one-line import change — everything else (Gradio UI, chat loop, context display) works identically:
+
+```python
+# LangChain baseline
+from src.implementation.answer import answer_question
+
+# Optimised pipeline
+from src.implementation.optimised_answer import answer_question
+```
+
+The same applies to `src/evaluation/eval.py`: only the module name changes, the imported functions stay the same:
+
+```python
+# LangChain baseline
+from src.implementation.answer import answer_question, fetch_context
+
+# Optimised pipeline
+from src.implementation.optimised_answer import answer_question, fetch_context
+```
+
+---
 
 ## [Web Summary Tool](./ai_web_summary_tool/)
 
@@ -448,132 +622,5 @@ A lightweight Gradio UI is included for interactive use: paste Python code, sele
   - ensure required keys are set (`OPENAI_API_KEY` and/or `ANTHROPIC_API_KEY`, plus optional `OPENROUTER_API_KEY`)
   - install UI dependency: `pip install gradio`
   - launch: call the function with `ui_launch=True` (opens in browser)
-
----
-
-## [Expert Knowledge Worker (RAG Chatbot)](./RAG_expert_knowledge_worker/)
-
-<p align="center">
-  <img src="media/rag_chatbot.png" alt="Insurellm Expert Assistant" width="900">
-</p>
-
-A lightweight Retrieval-Augmented Generation (RAG) assistant for answering questions about a company knowledge base (Insurellm). It combines a document-ingestion pipeline, a vector database, a Gradio chat UI that shows both the assistant response and the retrieved source context side-by-side for transparency, and an evaluation dashboard that measures retrieval and answer quality against a labelled test set.
-
-### Business problem
-
-Internal knowledge is often spread across Markdown docs, notes, and operational writeups. Team members need quick answers, but manually searching across files is slow and inconsistent. A plain chatbot is also risky because it can answer without grounding in the actual company documentation.
-
-This project addresses that by retrieving relevant knowledge-base chunks first, then answering with the LLM using that retrieved context.
-
-### What it does
-
-The project is split into two core workflows:
-
-- **Ingestion (`src/implementation/ingest.py`)**
-  - loads Markdown files from a `knowledge-base/` directory (grouped by subfolders)
-  - tags each document with metadata (including `doc_type`)
-  - chunks documents using a recursive text splitter
-  - creates embeddings and stores them in a persistent Chroma vector database (`vector_db/`)
-  - rebuilds the collection when re-ingesting
-
-- **Question answering (`src/implementation/answer.py` + `app.py`)**
-  - retrieves relevant chunks from the vector DB for a user question
-  - combines prior user messages with the current question to improve retrieval context
-  - injects retrieved context into a system prompt
-  - generates a grounded answer with a chat model
-  - returns both:
-    - the assistant answer
-    - the retrieved source chunks (displayed in the UI)
-
-- **Gradio UI (`app.py`)**
-  - chat interface for user questions
-  - side panel showing retrieved context and source metadata for inspection
-  - simple conversational loop with message history
-
-### Notes on the design (why it’s structured this way)
-
-This is a compact but practical RAG pattern for internal assistants:
-
-- **Separate ingestion from answering**
-  - document parsing / chunking / embedding happens once (or on refresh)
-  - chat-time requests only perform retrieval + generation, which keeps the UI responsive
-
-- **Grounded answers with visible evidence**
-  - the assistant answer is shown alongside the retrieved context
-  - this makes debugging and trust assessment easier than a “black-box” chat response
-
-- **Conversation-aware retrieval**
-  - retrieval uses the current question plus prior user turns, which helps when users ask follow-up questions with ellipsis (e.g., “what about pricing?”)
-
-- **Prompt-as-contract**
-  - the system prompt explicitly frames the assistant as an Insurellm representative and instructs it to use context when relevant and admit uncertainty when needed
-
-### Retrieval / ingestion configuration (current defaults)
-
-- **Chat model**: `gpt-4.1-nano`
-- **Embedding model**: `text-embedding-3-large`
-- **Vector store**: Chroma (persistent local directory)
-- **Retrieval depth**: `k = 10`
-- **Chunking**: `chunk_size=500`, `chunk_overlap=200`
-
-### Interface
-
-Core answering function:
-
-`answer_question(question: str, history: list[dict] = []) -> tuple[str, list[Document]]`
-
-- `question`: latest user question  
-- `history`: prior conversation turns in message-dict format (`[{role, content}, ...]`)  
-- returns:
-  - `answer` (LLM response string)
-  - `docs` (retrieved LangChain `Document` objects)
-
-UI chat callback (Gradio):
-
-`chat(history) -> (history, formatted_context_html)`
-
-- appends the assistant response to the chat history
-- formats retrieved documents into a “Relevant Context” panel with sources
-
-### Expected project structure (conceptual)
-
-- `app.py` — Gradio UI entry point
-- `src/implementation/answer.py` — retrieval + answer generation
-- `src/implementation/ingest.py` — ingestion and vector DB build
-- `knowledge-base/` — Markdown source documents (subfolders allowed)
-- `vector_db/` — persisted Chroma database (generated)
-
-### Evaluation system
-
-A standalone evaluation suite (`evaluator.py` + `src/evaluation/`) measures both retrieval and answer quality against a labelled test set (`tests.jsonl`).
-
-**Retrieval evaluation** — for each test question, the system retrieves the top-k chunks and computes:
-- **MRR** (Mean Reciprocal Rank): rank position of the first chunk containing each expected keyword
-- **nDCG** (Normalized Discounted Cumulative Gain): position-weighted keyword coverage across the result list
-- **Keyword coverage**: percentage of expected keywords found anywhere in the retrieved results
-
-**Answer evaluation** — the generated answer is compared against a reference answer by an LLM judge (`gpt-4.1-nano`) using structured outputs, scoring three dimensions on a 1–5 scale:
-- **Accuracy**: factual correctness relative to the reference answer
-- **Completeness**: coverage of all key information from the reference answer
-- **Relevance**: how directly the answer addresses the question without unnecessary additions
-
-Results are displayed in a Gradio dashboard (`evaluator.py`) with colour-coded metrics (green / amber / red) and a per-category bar chart. A CLI mode (`eval.py <test_row_number>`) is also available for inspecting individual test cases.
-
-### Run locally
-
-1. Create and activate your environment
-2. Install dependencies (LangChain, Chroma, Gradio, OpenAI, dotenv, etc.)
-3. Set environment variables (at minimum `OPENAI_API_KEY`)
-4. Add your company Markdown files under `knowledge-base/`
-5. Build the vector store:
-   - `python src/implementation/ingest.py`
-6. Launch the chat UI:
-   - `python app.py`
-7. Launch the evaluation dashboard (optional):
-   - `python evaluator.py`
-
-### Demo app (Gradio)
-
-A lightweight Gradio interface is included to demonstrate the full RAG loop (chat → retrieve → answer + visible context). It is intended as a local demo, but the architecture maps cleanly to internal support / knowledge-assistant use cases.
 
 ---

@@ -5,7 +5,7 @@ from litellm import completion
 from dotenv import load_dotenv
 
 from src.evaluation.test import TestQuestion, load_tests
-from src.implementation.answer import answer_question, fetch_context
+from src.implementation.optimised_answer import answer_question, fetch_context
 
 
 load_dotenv(override=True)
