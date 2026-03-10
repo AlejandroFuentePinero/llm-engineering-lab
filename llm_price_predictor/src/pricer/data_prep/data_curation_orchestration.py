@@ -5,17 +5,17 @@ Loads Amazon product datasets, deduplicates, resamples by price distribution,
 and optionally pushes the curated splits to HuggingFace Hub.
 
 Usage:
-    python -m src.pricer.pipeline.data_curation_orchestration [options]
+    python -m src.pricer.data_prep.data_curation_orchestration [options]
 
 Examples:
     # Run pipeline locally (no HF push)
-    python -m src.pricer.pipeline.data_curation_orchestration
+    python -m src.pricer.data_prep.data_curation_orchestration
 
     # Run and push to HuggingFace
-    python -m src.pricer.pipeline.data_curation_orchestration --push-to-hub --username Alejandrofupi
+    python -m src.pricer.data_prep.data_curation_orchestration --push-to-hub --username Alejandrofupi
 
     # Custom sample size
-    python -m src.pricer.pipeline.data_curation_orchestration --size 400000 --push-to-hub
+    python -m src.pricer.data_prep.data_curation_orchestration --size 400000 --push-to-hub
 """
 
 import argparse
@@ -31,8 +31,10 @@ from tqdm import tqdm
 project_root = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(project_root))
 
-from src.pricer.items import Item
-from src.pricer.loaders import ItemLoader
+from src.pricer.data_prep.items import Item
+from src.pricer.data_prep.loaders import (
+    ItemLoader,
+)
 
 DATASET_NAMES = [
     "Automotive",
@@ -70,10 +72,18 @@ def deduplicate(items: list[Item]) -> list[Item]:
     random.shuffle(items)
 
     seen: set = set()
-    items = [x for x in tqdm(items, desc="Dedup by title") if not (x.title in seen or seen.add(x.title))]
+    items = [
+        x
+        for x in tqdm(items, desc="Dedup by title")
+        if not (x.title in seen or seen.add(x.title))
+    ]
 
     seen = set()
-    items = [x for x in tqdm(items, desc="Dedup by full text") if not (x.full in seen or seen.add(x.full))]
+    items = [
+        x
+        for x in tqdm(items, desc="Dedup by full text")
+        if not (x.full in seen or seen.add(x.full))
+    ]
 
     print(f"After deduplication: {len(items):,} items")
     return items
@@ -86,7 +96,7 @@ def resample(items: list[Item], size: int) -> list[Item]:
     categories = np.array([it.category for it in items])
 
     p = (prices - prices.min()) / (prices.max() - prices.min() + 1e-9)
-    w = p ** 2
+    w = p**2
     w[categories == "Tools_and_Home_Improvement"] *= 0.5
     w[categories == "Automotive"] *= 0.05
 
@@ -125,7 +135,9 @@ def push_to_hub(sample: list[Item], username: str):
     test_lite = test[:LITE_TEST]
 
     print(f"Pushing lite dataset to {lite_repo} ...")
-    print(f"  train={len(train_lite):,}  val={len(val_lite):,}  test={len(test_lite):,}")
+    print(
+        f"  train={len(train_lite):,}  val={len(val_lite):,}  test={len(test_lite):,}"
+    )
     Item.push_to_hub(lite_repo, train_lite, val_lite, test_lite)
 
     print("Done pushing to HuggingFace Hub.")

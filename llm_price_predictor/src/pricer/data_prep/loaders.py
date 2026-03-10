@@ -2,7 +2,7 @@ from datetime import datetime
 from tqdm import tqdm
 from datasets import load_dataset
 from concurrent.futures import ProcessPoolExecutor
-from src.pricer.parser import parse
+from src.pricer.data_prep.parser import parse
 import os
 
 CHUNK_SIZE = 1000

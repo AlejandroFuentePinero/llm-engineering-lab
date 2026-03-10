@@ -1,4 +1,4 @@
-from src.pricer.items import Item
+from src.pricer.data_prep.items import Item
 import json
 import re
 

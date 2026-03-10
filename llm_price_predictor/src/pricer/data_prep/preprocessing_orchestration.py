@@ -22,18 +22,18 @@ summary for every item.  Because Groq processes batches asynchronously
 USAGE
 ─────
     # Full dataset – two separate steps (recommended for 820k items)
-    python -m src.pricer.pipeline.preprocessing_orchestration --mode submit
-    python -m src.pricer.pipeline.preprocessing_orchestration --mode poll --push-to-hub
+    python -m src.pricer.data_prep.preprocessing_orchestration --mode submit
+    python -m src.pricer.data_prep.preprocessing_orchestration --mode poll --push-to-hub
 
     # Lite dataset – everything in one go
-    python -m src.pricer.pipeline.preprocessing_orchestration --mode run --lite --push-to-hub
+    python -m src.pricer.data_prep.preprocessing_orchestration --mode run --lite --push-to-hub
 
     # Custom HuggingFace username
-    python -m src.pricer.pipeline.preprocessing_orchestration --mode run --lite \\
+    python -m src.pricer.data_prep.preprocessing_orchestration --mode run --lite \\
         --username YourHFUsername --push-to-hub
 
     # Adjust how often the poll loop checks Groq (seconds, default 60)
-    python -m src.pricer.pipeline.preprocessing_orchestration --mode poll \\
+    python -m src.pricer.data_prep.preprocessing_orchestration --mode poll \\
         --poll-interval 120 --push-to-hub
 """
 
@@ -47,8 +47,8 @@ from dotenv import load_dotenv
 project_root = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(project_root))
 
-from src.pricer.batch import Batch
-from src.pricer.items import Item
+from src.pricer.data_prep.batch import Batch
+from src.pricer.data_prep.items import Item
 
 DEFAULT_USERNAME = "Alejandrofupi"
 

@@ -11,8 +11,8 @@ from unittest.mock import MagicMock, patch
 project_root = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(project_root))
 
-from src.pricer.items import Item
-from src.pricer.pipeline.data_curation_orchestration import (
+from src.pricer.data_prep.items import Item
+from src.pricer.data_prep.data_curation_orchestration import (
     deduplicate,
     resample,
     run,
@@ -191,8 +191,8 @@ class TestRunOrchestration(unittest.TestCase):
             )
         return items
 
-    @patch("src.pricer.pipeline.data_curation_orchestration.load_dotenv")
-    @patch("src.pricer.pipeline.data_curation_orchestration.load_all")
+    @patch("src.pricer.data_prep.data_curation_orchestration.load_dotenv")
+    @patch("src.pricer.data_prep.data_curation_orchestration.load_all")
     def test_run_no_push_returns_sample(self, mock_load_all, mock_dotenv):
         pool = self._make_pool(300)
         mock_load_all.return_value = pool
@@ -202,9 +202,9 @@ class TestRunOrchestration(unittest.TestCase):
         self.assertEqual(len(result), 50)
         mock_load_all.assert_called_once_with(DATASET_NAMES)
 
-    @patch("src.pricer.pipeline.data_curation_orchestration.load_dotenv")
-    @patch("src.pricer.pipeline.data_curation_orchestration.push_to_hub")
-    @patch("src.pricer.pipeline.data_curation_orchestration.load_all")
+    @patch("src.pricer.data_prep.data_curation_orchestration.load_dotenv")
+    @patch("src.pricer.data_prep.data_curation_orchestration.push_to_hub")
+    @patch("src.pricer.data_prep.data_curation_orchestration.load_all")
     def test_run_with_push_calls_push(self, mock_load_all, mock_push, mock_dotenv):
         pool = self._make_pool(300)
         mock_load_all.return_value = pool
@@ -215,9 +215,9 @@ class TestRunOrchestration(unittest.TestCase):
         call_args = mock_push.call_args
         self.assertEqual(call_args[1]["username"], "testuser")
 
-    @patch("src.pricer.pipeline.data_curation_orchestration.load_dotenv")
-    @patch("src.pricer.pipeline.data_curation_orchestration.push_to_hub")
-    @patch("src.pricer.pipeline.data_curation_orchestration.load_all")
+    @patch("src.pricer.data_prep.data_curation_orchestration.load_dotenv")
+    @patch("src.pricer.data_prep.data_curation_orchestration.push_to_hub")
+    @patch("src.pricer.data_prep.data_curation_orchestration.load_all")
     def test_run_no_push_never_calls_push(self, mock_load_all, mock_push, mock_dotenv):
         mock_load_all.return_value = self._make_pool(300)
         run(size=50, push=False)
