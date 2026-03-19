@@ -212,7 +212,7 @@ def fine_tune_evaluation(
         print(f"Evaluating model: {model_name}")
 
     predictor = make_fine_tuned_predictor(model_name)
-    evaluate(predictor, test)
+    evaluate(predictor, test, workers=1)
 
 
 # --- Full orchestration (submit → wait → evaluate)
