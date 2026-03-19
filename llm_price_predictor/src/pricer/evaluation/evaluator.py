@@ -33,7 +33,12 @@ class Tester:
 
     @staticmethod
     def make_title(predictor) -> str:
-        return predictor.__name__.replace("__", ".").replace("_", " ").title().replace("Gpt", "GPT")
+        return (
+            predictor.__name__.replace("__", ".")
+            .replace("_", " ")
+            .title()
+            .replace("Gpt", "GPT")
+        )
 
     @staticmethod
     def post_process(value):
@@ -59,7 +64,11 @@ class Tester:
         truth = datapoint.price
         error = abs(guess - truth)
         color = self.color_for(error, truth)
-        title = datapoint.title if len(datapoint.title) <= 40 else datapoint.title[:40] + "..."
+        title = (
+            datapoint.title
+            if len(datapoint.title) <= 40
+            else datapoint.title[:40] + "..."
+        )
         return title, guess, truth, error, color
 
     def chart(self, title):
@@ -133,7 +142,9 @@ class Tester:
         ]
 
         # 95% confidence interval for mean
-        ci = [1.96 * (sd / math.sqrt(i)) if i > 1 else 0 for i, sd in zip(x, running_stds)]
+        ci = [
+            1.96 * (sd / math.sqrt(i)) if i > 1 else 0 for i, sd in zip(x, running_stds)
+        ]
         upper = [m + c for m, c in zip(running_means, ci)]
         lower = [m - c for m, c in zip(running_means, ci)]
 
