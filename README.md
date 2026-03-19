@@ -10,6 +10,7 @@ This repo is where I build LLM capabilities that hold up in real work. It presen
 The emphasis is control and reuse. Prompts are treated as contracts (tone, length, structure), multi-step pipelines are used when they improve relevance, and outputs are produced as Markdown/JSON so they drop cleanly into docs, notes, tickets, and downstream tools.
 
 ## Table of contents
+- [LLM Price Predictor](#llm-price-predictor)
 - [Expert Knowledge Worker (RAG Chatbot)](#expert-knowledge-worker-rag-chatbot)
 - [Web Summary Tool](#web-summary-tool)
 - [Company Brochure Generator](#company-brochure-generator)
@@ -25,6 +26,126 @@ The emphasis is control and reuse. Prompts are treated as contracts (tone, lengt
 ---
 
 # Projects
+
+## [LLM Price Predictor](./llm_price_predictor/)
+
+<p align="center">
+  <img src="media/price_predictor_hero.png" alt="LLM Price Predictor" width="900">
+</p>
+
+An end-to-end machine learning pipeline that predicts Amazon product prices from natural language descriptions. The project runs the full lifecycle — raw data curation, LLM-powered preprocessing, fine-tuning data preparation, and training and evaluation of more than a dozen models — and benchmarks them on the same held-out test set, from simple baselines to fine-tuned frontier and open-source LLMs.
+
+### Business problem
+
+Product pricing at scale is hard. Prices depend on brand, category, material, and dozens of other factors embedded in unstructured text. A model that can estimate price from a product description has direct applications in marketplace pricing tools, procurement automation, and catalogue quality checks.
+
+The challenge is less "can an LLM do this?" and more "which approach gives the best accuracy per cost?" — which requires a rigorous, apples-to-apples comparison across model families.
+
+### What it does
+
+The pipeline is split into four stages, each with its own orchestration module:
+
+- **Data curation (`data_curation_orchestration.py` + `parser.py`)**
+  - loads Amazon product data across 8 categories (Automotive, Electronics, Office Products, and more) from the McAuley-Lab dataset using parallel `ProcessPoolExecutor` workers
+  - scrubs items via `parser.py`: filters to $0.50–$999.49 price range, minimum 600-character text length, and strips part numbers and boilerplate
+  - deduplicates by title and full text
+  - resamples using quadratic weighting to reduce the dominance of low-priced items
+  - produces a full (~820k items) and a lite (~23k items) dataset, both pushed to HuggingFace Hub
+
+- **Batch preprocessing (`preprocessing_orchestration.py` + `batch.py`)**
+  - submits product descriptions to Groq's async batch API via `batch.py`, which manages job submission, polling, and result retrieval
+  - generates structured summaries (Title, Category, Brand, Description, Details) using an LLM
+  - supports resumable execution — state is saved to disk (`batches.pkl`) so interrupted jobs can be polled and resumed without data loss
+  - pushes summarised items back to HuggingFace Hub
+
+- **Fine-tuning preparation (`prompt_prep_fine_tunning.py`)**
+  - loads summarised items and tokenises summaries with the target model tokeniser (Llama-3.2-3B)
+  - truncates to a 110-token cap to keep prompts within model context windows
+  - generates prompt-completion pairs in SFT format and pushes them to HuggingFace Hub
+
+- **Modelling and evaluation (`src/pricer/modeling/`)**
+  - trains and evaluates multiple model families on the same test split
+  - all models are compared on the same metrics: MAE, MSE, and R²
+
+### Models benchmarked
+
+<p align="center">
+  <img src="media/price_predictor_comp_final.png" alt="LLM Price Predictor — model comparison" width="900">
+</p>
+
+| Model | Type |
+|---|---|
+| Constant / Linear / Random Forest / XGBoost | Traditional ML baselines |
+| Neural Network (8-layer MLP) | Deep learning |
+| Deep Neural Network (10-layer ResNet, log-space) | Deep learning |
+| GPT-4.1 Nano (zero-shot) | Frontier LLM, pre-trained |
+| GPT-4.1 Nano (fine-tuned) | Frontier LLM, fine-tuned |
+| Llama-3.2-3B (base, no fine-tuning) | Open-source LLM, pre-trained |
+| Llama-3.2-3B (fine-tuned) *(in progress)* | Open-source LLM, fine-tuned |
+
+### Core data model — `Item`
+
+`Item` (`src/pricer/data_prep/items.py`) is the Pydantic model that carries a product through every stage of the pipeline. Fields are populated progressively as the item moves from raw ingestion through preprocessing, prompt generation, and fine-tuning.
+
+| Field | Type | Populated at | Purpose |
+|---|---|---|---|
+| `title` | `str` | Curation | Product title |
+| `category` | `str` | Curation | Amazon product category |
+| `price` | `float` | Curation | Ground truth label |
+| `full` | `str` (opt) | Curation | Raw concatenated product text (pre-summary) |
+| `weight` | `float` (opt) | Curation | Sampling weight (quadratic, used for resampling) |
+| `summary` | `str` (opt) | Preprocessing | LLM-generated structured summary (Title / Category / Brand / Description / Details) |
+| `prompt` | `str` (opt) | Fine-tuning prep | Full prompt: `"What does this cost to the nearest dollar?\n\n{summary}\n\nPrice is $"` |
+| `completion` | `str` (opt) | Fine-tuning prep | Target completion: `"{price}.00"` (rounded for train/val, exact for test) |
+| `id` | `int` (opt) | Preprocessing | Stable ID for matching batch API results back to items |
+
+Key methods:
+
+- **`make_prompts(tokenizer, max_tokens, do_round)`** — tokenises the summary, truncates to `max_tokens` if needed, and writes `prompt` and `completion`. `do_round=True` for train/val (rounded price), `False` for test (exact price).
+- **`test_prompt() -> str`** — strips the completion from the prompt, returning only the question half for inference.
+- **`push_to_hub / from_hub`** — serialises/deserialises full `Item` lists to/from HuggingFace Hub (train / validation / test splits).
+- **`push_prompts_to_hub`** — pushes only `{"prompt", "completion"}` pairs for SFT training (used by the fine-tuning stage).
+
+### Notes on the design (why it's structured this way)
+
+- **Stage-based orchestration**
+  Each pipeline stage (curation, preprocessing, fine-tuning prep, modelling) is an independent, callable module. This means any stage can be re-run or swapped without affecting the others, which matters when experiments iterate on a single layer (e.g., testing a different prompt format for fine-tuning).
+
+- **LLM summaries as a preprocessing step**
+  Raw Amazon product descriptions contain noise, boilerplate, and HTML artefacts. Running an LLM batch preprocessing step to produce clean structured summaries before any model sees the data is what makes fine-tuning effective and fair. All models consume the same cleaned summaries.
+
+- **Weighted resampling**
+  The raw dataset skews heavily toward low-priced items. The quadratic weighting scheme at curation time ensures the price distribution is more uniform across the range, which prevents models from simply predicting the mode and scoring well on MAE.
+
+- **Shared evaluation layer**
+  All models are evaluated by the same `Tester` class with the same post-processing logic (numeric extraction from raw strings). This ensures the comparison is fair across model types, including generative LLMs that return unstructured text.
+
+- **Resumable async jobs**
+  Groq batch processing and OpenAI fine-tuning are long-running async jobs (up to 24h). Both use a persist-and-poll pattern (saved state to disk / polling loop) so that jobs survive notebook restarts and network interruptions.
+
+### Pipeline configuration (current defaults)
+
+- **Preprocessing model**: Groq batch API (LLM summarisation)
+- **Vectoriser**: `HashingVectorizer` (5,000 binary features) for NN / DNN models
+- **Fine-tuning base model**: `meta-llama/Llama-3.2-3B`
+- **Frontier fine-tuning model**: `gpt-4.1-nano-2025-04-14`
+- **Token cutoff (prompts)**: 110 tokens
+- **Dataset splits**: 800k / 10k / 10k (full), 20k / 1k / 1k (lite)
+- **Evaluation sample size**: 200 test items per model run
+
+### Run locally
+
+The modelling and evaluation scripts run locally. Data curation, batch preprocessing, and LLM fine-tuning require HuggingFace and Groq / OpenAI credentials respectively.
+
+1. Set environment variables (`HF_TOKEN`, `OPENAI_API_KEY`, `GROQ_API_KEY`)
+2. Run any benchmark from the project root:
+   - Neural network: `python llm_price_predictor/src/pricer/modeling/NN_benchmark.py`
+   - Deep neural network: `python llm_price_predictor/src/pricer/modeling/DNN_benchmark.py`
+   - Frontier LLM (zero-shot): `python llm_price_predictor/src/pricer/modeling/LLM_pretuned_benchmark.py`
+   - Llama base model (local, Apple Silicon): `python llm_price_predictor/src/pricer/modeling/basemodel_llama_eval_benchmark_local.py`
+3. Llama benchmarks that require GPU run in Google Colab (Runtime → T4 GPU)
+
+---
 
 ## [Expert Knowledge Worker (RAG Chatbot)](./RAG_expert_knowledge_worker/)
 
