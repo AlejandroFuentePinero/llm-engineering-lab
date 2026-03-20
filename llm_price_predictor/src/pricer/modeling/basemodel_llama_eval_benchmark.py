@@ -6,7 +6,7 @@
 import sys
 from pathlib import Path
 
-project_root = Path().resolve().parent
+project_root = Path(__file__).resolve().parents[3]
 sys.path.append(str(project_root))
 
 # --- Imports
@@ -114,7 +114,7 @@ def basemodel_llama_eval(
         generated_ids = output_ids[0, prompt_len:]
         return tokenizer.decode(generated_ids)
 
-    # --- Evaluate LLM performance (workers=1 to avoid shared HTTP client issues across threads)
+    # --- Evaluate LLM performance
     tester = Tester(model_predict, test)
     tester.run()
 
