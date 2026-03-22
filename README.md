@@ -144,9 +144,11 @@ The modelling and evaluation scripts run locally. Data curation, batch preproces
    - Deep neural network: `python llm_price_predictor/src/pricer/modeling/DNN_benchmark.py`
    - Frontier LLM (zero-shot): `python llm_price_predictor/src/pricer/modeling/LLM_pretuned_benchmark.py`
    - Llama base model (local, Apple Silicon): `python llm_price_predictor/src/pricer/modeling/basemodel_llama_eval_benchmark_local.py`
+   - Llama fine-tuned model (local, Apple Silicon): `python llm_price_predictor/src/pricer/modeling/llama_finetunning_eval_local.py`
 3. Llama benchmarks and fine-tuning that require a CUDA GPU run in Google Colab (Runtime → T4 GPU):
    - Llama base-model evaluation: `llm_price_predictor/src/pricer/modeling/basemodel_llama_eval_benchmark.py`
    - Llama QLoRA fine-tuning: `llm_price_predictor/src/pricer/modeling/llama_finetunning_training_colab.py`
+   - Llama fine-tuned model evaluation: `llm_price_predictor/src/pricer/modeling/llama_finetunning_eval_colab.py`
      - Requires `HF_TOKEN` and `WANDB_API_KEY` in Colab Secrets (Tools → Secrets)
      - Logs training metrics to Weights & Biases; optionally pushes checkpoints to HuggingFace Hub
      - Uses 4-bit NF4 quantisation by default; `LITE_MODE=True` runs a single epoch on the lite dataset for quick iteration
