@@ -84,6 +84,12 @@ The pipeline is split into four stages, each with its own orchestration module:
   <img src="media/price_predictor_comp_final.png" alt="LLM Price Predictor — model comparison" width="900">
 </p>
 
+### Ensemble model result
+
+<p align="center">
+  <img src="media/ensemble_pricer_res.png" alt="Ensemble model result" width="900">
+</p>
+
 | Model | Type |
 |---|---|
 | Constant / Linear / Random Forest / XGBoost | Traditional ML baselines |
