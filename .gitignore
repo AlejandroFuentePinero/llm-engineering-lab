@@ -9,3 +9,5 @@ notebooks/
 vector_db/
 preprocessed_db/
 recall_lab/
+products_vectorstore
+deep_neural_network.pth

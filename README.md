@@ -68,6 +68,16 @@ The pipeline is split into four stages, each with its own orchestration module:
   - all models are compared on the same metrics: MAE, MSE, and R²
   - open-source LLM fine-tuning uses QLoRA (Quantised Low-Rank Adaptation): the base model is loaded in 4-bit NF4 quantisation to fit within T4 GPU memory (~2 GB footprint), and LoRA adapters are trained on the attention layers only in lite mode (+ MLP layers in full mode); this makes fine-tuning a 3B-parameter model feasible on a free Colab GPU without full-precision weights
 
+- **RAG pipeline (`src/pricer/RAG/`)**
+  - `rag_ingest.py` encodes all 800k training products using `sentence-transformers/all-MiniLM-L6-v2` and stores them in a persistent ChromaDB vectorstore
+  - `rag_pipeline.py` retrieves the 5 most similar products (by embedding cosine similarity) for each test item and passes them as price context to GPT-5.1, grounding the prediction in real comparable products
+  - the vectorstore must be built once before running RAG or ensemble benchmarks (`python llm_price_predictor/src/pricer/RAG/rag_ingest.py`, ~70 min)
+
+- **Ensemble (`src/pricer/modeling/ensemble_benchmark.py`)**
+  - combines three complementary predictors: GPT-5.1+RAG (80%), fine-tuned specialist deployed on Modal (10%), and the DNN (10%)
+  - the DNN used here is the same 10-layer residual network trained in `DNN_benchmark.py`; its saved weights (`deep_neural_network.pth`) must be downloaded before running the ensemble
+  - the weighting favours the RAG frontier model while using the specialist and DNN as anchors that dampen implausible outliers
+
 ### Models benchmarked
 
 <p align="center">
@@ -83,6 +93,8 @@ The pipeline is split into four stages, each with its own orchestration module:
 | GPT-4.1 Nano (fine-tuned) | Frontier LLM, fine-tuned |
 | Llama-3.2-3B (base, no fine-tuning) | Open-source LLM, pre-trained |
 | Llama-3.2-3B (fine-tuned) | Open-source LLM, fine-tuned |
+| GPT-5.1 + RAG | Frontier LLM with retrieval augmentation |
+| Ensemble (GPT-5.1+RAG + fine-tuned specialist + DNN) | Multi-model ensemble |
 
 ### Core data model — `Item`
 
@@ -145,6 +157,8 @@ The modelling and evaluation scripts run locally. Data curation, batch preproces
    - Frontier LLM (zero-shot): `python llm_price_predictor/src/pricer/modeling/LLM_pretuned_benchmark.py`
    - Llama base model (local, Apple Silicon): `python llm_price_predictor/src/pricer/modeling/basemodel_llama_eval_benchmark_local.py`
    - Llama fine-tuned model (local, Apple Silicon): `python llm_price_predictor/src/pricer/modeling/llama_finetunning_eval_local.py`
+   - GPT-5.1 + RAG (requires vectorstore built first): `python llm_price_predictor/src/pricer/modeling/openai_gpt5_1_rag_benchmark.py`
+   - Ensemble (requires vectorstore + DNN weights + Modal deployment): `python llm_price_predictor/src/pricer/modeling/ensemble_benchmark.py`
 3. Llama benchmarks and fine-tuning that require a CUDA GPU run in Google Colab (Runtime → T4 GPU):
    - Llama base-model evaluation: `llm_price_predictor/src/pricer/modeling/basemodel_llama_eval_benchmark.py`
    - Llama QLoRA fine-tuning: `llm_price_predictor/src/pricer/modeling/llama_finetunning_training_colab.py`
