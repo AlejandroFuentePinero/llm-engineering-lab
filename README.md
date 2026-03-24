@@ -75,7 +75,7 @@ The pipeline is split into four stages, each with its own orchestration module:
 
 - **Ensemble (`src/pricer/modeling/ensemble_benchmark.py`)**
   - combines three complementary predictors: GPT-5.1+RAG (80%), fine-tuned specialist deployed on Modal (10%), and the DNN (10%)
-  - the DNN used here is the same 10-layer residual network trained in `DNN_benchmark.py`; its saved weights (`deep_neural_network.pth`) must be downloaded before running the ensemble
+  - the DNN used here is the same 10-layer residual network trained in `DNN_benchmark.py`; its saved weights (`deep_neural_network.pth`) must be downloaded before running the ensemble — `modeling/deep_neural_network.py` is the training script that produces those weights, while `agents/deep_neural_network.py` is the inference-only counterpart used by the agent system
   - the weighting favours the RAG frontier model while using the specialist and DNN as anchors that dampen implausible outliers
 
 ### Models benchmarked
