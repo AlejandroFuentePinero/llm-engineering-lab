@@ -1,5 +1,5 @@
 import modal
-from agents.agent import Agent
+from src.pricer.agents.agent import Agent
 
 
 class SpecialistAgent(Agent):
