@@ -6,17 +6,17 @@
 
 ## Overview
 
-A lab for building production-grade LLM systems — from single-model inference to autonomous multi-agent pipelines. Projects are real, deployable, and cover the full engineering stack.
+A lab for building production-grade LLM systems, from single-model inference to autonomous multi-agent pipelines. Projects are real, deployable, and cover the full engineering stack.
 
 **Skills demonstrated across this repo:**
-- **RAG** — vector ingestion, embedding search, retrieval-augmented generation at scale (800k documents)
-- **Fine-tuning** — QLoRA fine-tuning of open-source LLMs (Llama 3.2 3B) on Colab; frontier model fine-tuning via OpenAI API
-- **Agents & orchestration** — tool-use agents, autonomous planning loops, multi-agent coordination, real-time deal detection and notification
-- **Cloud deployment** — Modal serverless deployment, HuggingFace Hub integration, async batch jobs
-- **Multimodal** — vision and voice capabilities across select projects
-- **Evaluation** — rigorous benchmarking across a dozen model families on the same held-out test set
+- **RAG**: vector ingestion, embedding search, retrieval-augmented generation at scale (800k documents)
+- **Fine-tuning**: QLoRA fine-tuning of open-source LLMs (Llama 3.2 3B) on Colab and frontier model fine-tuning via the OpenAI API
+- **Agents and orchestration**: tool-use agents, autonomous planning loops, multi-agent coordination, real-time deal detection and notification
+- **Cloud deployment**: Modal serverless deployment, HuggingFace Hub integration, async batch jobs
+- **Multimodal**: vision and voice capabilities across select projects
+- **Evaluation**: rigorous benchmarking across a dozen model families on the same held-out test set
 
-The projects escalate in complexity. Earlier ones cover core patterns — structured prompting, retrieval, tool use. The flagship project (LLM Price Predictor) integrates all of the above into an end-to-end system: data curation at scale, LLM preprocessing, model training, RAG, ensemble inference, and an autonomous agent that scans for deals, prices them, and notifies the user in real time.
+Projects escalate in complexity. Earlier ones establish core patterns like structured prompting, retrieval, and tool use. The flagship project (LLM Price Predictor) brings everything together into one end-to-end system: data curation at scale, LLM preprocessing, model training, RAG, ensemble inference, and an autonomous agent that scans for deals, prices them, and notifies the user in real time.
 
 ## Skills by project
 
@@ -58,55 +58,54 @@ The projects escalate in complexity. Earlier ones cover core patterns — struct
   <img src="media/price_predictor_hero.png" alt="LLM Price Predictor" width="900">
 </p>
 
-An end-to-end machine learning pipeline that predicts Amazon product prices from natural language descriptions. The project runs the full lifecycle — raw data curation, LLM-powered preprocessing, fine-tuning data preparation, and training and evaluation of more than a dozen models — and benchmarks them on the same held-out test set, from simple baselines to fine-tuned frontier and open-source LLMs.
+An end-to-end machine learning system that predicts Amazon product prices from natural language descriptions. It covers the full lifecycle: data curation at scale, LLM-powered preprocessing, model training and benchmarking across a dozen architectures, RAG retrieval, cloud deployment, and autonomous multi-agent orchestration. The system culminates in an agent that scans the web for deals, prices them using the ensemble model, and notifies the user in real time.
 
 ### Business problem
 
-Product pricing at scale is hard. Prices depend on brand, category, material, and dozens of other factors embedded in unstructured text. A model that can estimate price from a product description has direct applications in marketplace pricing tools, procurement automation, and catalogue quality checks.
+Product pricing at scale is hard. Prices depend on brand, category, material, and dozens of other factors buried in unstructured text. A model that can estimate price from a product description has direct applications in marketplace pricing tools, procurement automation, and catalogue quality checks.
 
-The challenge is less "can an LLM do this?" and more "which approach gives the best accuracy per cost?" — which requires a rigorous, apples-to-apples comparison across model families.
+The real question is not whether an LLM can do this, but which approach gives the best accuracy per cost. That requires a rigorous, apples-to-apples comparison across model families.
 
 ### What it does
 
-The pipeline is split into four stages, each with its own orchestration module:
+The system is split into six stages, each with its own module:
 
 - **Data curation (`data_curation_orchestration.py` + `parser.py`)**
-  - loads Amazon product data across 8 categories (Automotive, Electronics, Office Products, and more) from the McAuley-Lab dataset using parallel `ProcessPoolExecutor` workers
-  - scrubs items via `parser.py`: filters to $0.50–$999.49 price range, minimum 600-character text length, and strips part numbers and boilerplate
-  - deduplicates by title and full text
-  - resamples using quadratic weighting to reduce the dominance of low-priced items
-  - produces a full (~820k items) and a lite (~23k items) dataset, both pushed to HuggingFace Hub
+  - loads Amazon product data across 8 categories from the McAuley-Lab dataset using parallel workers
+  - filters items to a $0.50-$999.49 price range, removes those under 600 characters, and strips part numbers and boilerplate
+  - deduplicates by title and full text, then resamples using quadratic weighting to reduce the dominance of low-priced items
+  - produces a full dataset (~820k items) and a lite version (~23k items), both pushed to HuggingFace Hub
 
 - **Batch preprocessing (`preprocessing_orchestration.py` + `batch.py`)**
-  - submits product descriptions to Groq's async batch API via `batch.py`, which manages job submission, polling, and result retrieval
-  - generates structured summaries (Title, Category, Brand, Description, Details) using the `Preprocessor` class (`src/pricer/data_prep/preprocessor.py`) backed by an LLM
-  - supports resumable execution — state is saved to disk (`batches.pkl`) so interrupted jobs can be polled and resumed without data loss
+  - submits product descriptions to Groq's async batch API, which handles job submission, polling, and result retrieval
+  - generates structured summaries (Title, Category, Brand, Description, Details) using the `Preprocessor` class backed by an LLM
+  - saves state to disk (`batches.pkl`) so jobs can be resumed after interruption without data loss
   - pushes summarised items back to HuggingFace Hub
 
 - **Fine-tuning preparation (`prompt_prep_fine_tunning.py`)**
-  - loads summarised items and tokenises summaries with the target model tokeniser (Llama-3.2-3B)
-  - truncates to a 110-token cap to keep prompts within model context windows
+  - tokenises summaries with the Llama-3.2-3B tokeniser and truncates to a 110-token cap
   - generates prompt-completion pairs in SFT format and pushes them to HuggingFace Hub
 
 - **Modelling and evaluation (`src/pricer/modeling/`)**
-  - trains and evaluates multiple model families on the same test split
-  - all models are compared on the same metrics: MAE, MSE, and R²
-  - open-source LLM fine-tuning uses QLoRA (Quantised Low-Rank Adaptation): the base model is loaded in 4-bit NF4 quantisation to fit within T4 GPU memory (~2 GB footprint), and LoRA adapters are trained on the attention layers only in lite mode (+ MLP layers in full mode); this makes fine-tuning a 3B-parameter model feasible on a free Colab GPU without full-precision weights
+  - trains and evaluates multiple model families on the same test split, comparing all on MAE, MSE, and R²
+  - open-source fine-tuning uses QLoRA: the base model is loaded in 4-bit NF4 quantisation (~2 GB on a T4 GPU), with LoRA adapters trained on attention layers in lite mode and also MLP layers in full mode
 
 - **RAG pipeline (`src/pricer/RAG/`)**
-  - `rag_ingest.py` encodes all 800k training products using `sentence-transformers/all-MiniLM-L6-v2` and stores them in a persistent ChromaDB vectorstore
-  - `rag_pipeline.py` retrieves the 5 most similar products (by embedding cosine similarity) for each test item and passes them as price context to GPT-5.1, grounding the prediction in real comparable products
-  - the vectorstore must be built once before running RAG or ensemble benchmarks (`python llm_price_predictor/src/pricer/RAG/rag_ingest.py`, ~70 min)
+  - `rag_ingest.py` encodes all 800k training products with `sentence-transformers/all-MiniLM-L6-v2` and stores them in a ChromaDB vectorstore (build once, ~70 min)
+  - `rag_pipeline.py` retrieves the 5 most similar products for each test item and passes them as context to GPT-5.1, grounding predictions in real comparable products
 
 - **Ensemble (`src/pricer/modeling/ensemble_benchmark.py`)**
-  - combines three complementary predictors: GPT-5.1+RAG (80%), fine-tuned specialist deployed on Modal (10%), and the DNN (10%)
-  - the DNN used here is the same 10-layer residual network trained in `DNN_benchmark.py`; its saved weights (`deep_neural_network.pth`) must be downloaded before running the ensemble — `modeling/deep_neural_network.py` is the training script that produces those weights, while `agents/deep_neural_network.py` is the inference-only counterpart used by the agent system
-  - the weighting favours the RAG frontier model while using the specialist and DNN as anchors that dampen implausible outliers
+  - combines three predictors: GPT-5.1+RAG (80%), a fine-tuned specialist deployed on Modal (10%), and the DNN (10%)
+  - the DNN is the same 10-layer residual network from `DNN_benchmark.py`; `modeling/deep_neural_network.py` handles training while `agents/deep_neural_network.py` is the inference-only version used at runtime
+  - the RAG model leads the blend while the specialist and DNN act as anchors that dampen outliers
 
 - **Agent system (`src/pricer/agents/`)**
-  - production-ready wrappers around each model: `FrontierAgent` (GPT-5.1+RAG), `NeuralNetworkAgent` (DNN), `SpecialistAgent` (Modal fine-tuned), `EnsembleAgent` (combines all three)
-  - a deal-finding pipeline built on top: `ScannerAgent` scrapes RSS feeds, `PlanningAgent` / `AutonomousPlanningAgent` orchestrate pricing and selection, `MessagingAgent` sends push notifications for deals above a discount threshold
-  - `agents/items.py` is a lightweight `Item` variant used for inference only (no fine-tuning fields); the full `Item` with prompt/completion generation lives in `data_prep/items.py`
+  - production-ready wrappers around each model: `FrontierAgent` (GPT-5.1+RAG), `NeuralNetworkAgent` (DNN), `SpecialistAgent` (Modal), `EnsembleAgent` (combines all three)
+  - `AutonomousPlanningAgent` is an LLM-driven orchestrator: GPT-5.1 receives three tools (`scan_the_internet_for_bargains`, `estimate_true_value`, `notify_user_of_deal`) and decides autonomously which deals to evaluate, runs the ensemble on each, picks the best opportunity, and triggers a notification. The orchestration logic lives in the model, not in code
+  - `ScannerAgent` scrapes RSS deal feeds, filters out previously seen URLs, and uses GPT structured outputs to select the 5 deals with the clearest prices and best descriptions
+  - `MessagingAgent` uses Claude to write the notification message and delivers it via the Pushover API
+  - run the full autonomous workflow: `python llm_price_predictor/src/pricer/agents/run_agentic_workflow.py`
+  - `agents/items.py` is a lightweight `Item` for inference only; the full version with fine-tuning fields lives in `data_prep/items.py`
 
 ### Models benchmarked
 
@@ -132,7 +131,7 @@ The pipeline is split into four stages, each with its own orchestration module:
 | GPT-5.1 + RAG | Frontier LLM with retrieval augmentation |
 | Ensemble (GPT-5.1+RAG + fine-tuned specialist + DNN) | Multi-model ensemble |
 
-### Core data model — `Item`
+### Core data model: `Item`
 
 `Item` (`src/pricer/data_prep/items.py`) is the Pydantic model that carries a product through every stage of the pipeline. Fields are populated progressively as the item moves from raw ingestion through preprocessing, prompt generation, and fine-tuning.
 
@@ -150,27 +149,22 @@ The pipeline is split into four stages, each with its own orchestration module:
 
 Key methods:
 
-- **`make_prompts(tokenizer, max_tokens, do_round)`** — tokenises the summary, truncates to `max_tokens` if needed, and writes `prompt` and `completion`. `do_round=True` for train/val (rounded price), `False` for test (exact price).
-- **`test_prompt() -> str`** — strips the completion from the prompt, returning only the question half for inference.
-- **`push_to_hub / from_hub`** — serialises/deserialises full `Item` lists to/from HuggingFace Hub (train / validation / test splits).
-- **`push_prompts_to_hub`** — pushes only `{"prompt", "completion"}` pairs for SFT training (used by the fine-tuning stage).
+- **`make_prompts(tokenizer, max_tokens, do_round)`**: tokenises the summary, truncates to `max_tokens` if needed, and writes `prompt` and `completion`. Use `do_round=True` for train/val (rounded price) and `False` for test (exact price).
+- **`test_prompt() -> str`**: strips the completion from the prompt, returning only the question half for inference.
+- **`push_to_hub / from_hub`**: serialises and deserialises full `Item` lists to/from HuggingFace Hub across train, validation, and test splits.
+- **`push_prompts_to_hub`**: pushes only the `{"prompt", "completion"}` pairs needed for SFT training.
 
-### Notes on the design (why it's structured this way)
+### Design notes
 
-- **Stage-based orchestration**
-  Each pipeline stage (curation, preprocessing, fine-tuning prep, modelling) is an independent, callable module. This means any stage can be re-run or swapped without affecting the others, which matters when experiments iterate on a single layer (e.g., testing a different prompt format for fine-tuning).
+- **Stage-based orchestration**: each pipeline stage is an independent module that can be re-run or swapped without touching the others. This matters when iterating on a single layer, such as testing a different prompt format for fine-tuning.
 
-- **LLM summaries as a preprocessing step**
-  Raw Amazon product descriptions contain noise, boilerplate, and HTML artefacts. Running an LLM batch preprocessing step to produce clean structured summaries before any model sees the data is what makes fine-tuning effective and fair. All models consume the same cleaned summaries.
+- **LLM preprocessing**: raw Amazon descriptions are noisy, full of boilerplate and HTML artefacts. Running an LLM batch step to produce clean structured summaries before any model sees the data is what makes fine-tuning effective and the benchmark comparison fair. All models consume the same cleaned input.
 
-- **Weighted resampling**
-  The raw dataset skews heavily toward low-priced items. The quadratic weighting scheme at curation time ensures the price distribution is more uniform across the range, which prevents models from simply predicting the mode and scoring well on MAE.
+- **Weighted resampling**: the raw dataset skews heavily toward low-priced items. Quadratic resampling at curation time makes the price distribution more uniform, which prevents models from gaming MAE by always predicting a low price.
 
-- **Shared evaluation layer**
-  All models are evaluated by the `Tester` class (`src/pricer/agents/evaluator.py`) with consistent post-processing logic (numeric extraction from raw strings). This ensures the comparison is fair across model types, including generative LLMs that return unstructured text.
+- **Shared evaluation**: all models go through the same `Tester` class (`src/pricer/agents/evaluator.py`), which handles numeric extraction from raw string outputs. This keeps the comparison fair across traditional models, deep learning, and generative LLMs alike.
 
-- **Resumable async jobs**
-  Groq batch processing and OpenAI fine-tuning are long-running async jobs (up to 24h). Both use a persist-and-poll pattern (saved state to disk / polling loop) so that jobs survive notebook restarts and network interruptions.
+- **Resumable async jobs**: Groq batch processing and OpenAI fine-tuning can run for up to 24 hours. Both use a persist-and-poll pattern, saving state to disk so jobs survive notebook restarts and network interruptions.
 
 ### Pipeline configuration (current defaults)
 
@@ -184,10 +178,10 @@ Key methods:
 
 ### Run locally
 
-The modelling and evaluation scripts run locally. Data curation, batch preprocessing, and LLM fine-tuning require HuggingFace and Groq / OpenAI credentials respectively.
+Modelling and evaluation scripts run locally from the project root. Data curation, batch preprocessing, and fine-tuning require credentials for HuggingFace, Groq, and OpenAI. The ensemble and agentic workflow additionally require `MODAL_TOKEN_ID`, `MODAL_TOKEN_SECRET`, and `PUSHOVER_USER` / `PUSHOVER_TOKEN`.
 
-1. Set environment variables (`HF_TOKEN`, `OPENAI_API_KEY`, `GROQ_API_KEY`); for the ensemble also `MODAL_TOKEN_ID`, `MODAL_TOKEN_SECRET`, and `PUSHOVER_USER` / `PUSHOVER_TOKEN` for push notifications
-2. Run any benchmark from the project root:
+1. Set your environment variables in a `.env` file: `HF_TOKEN`, `OPENAI_API_KEY`, `GROQ_API_KEY`
+2. Run any benchmark:
    - Neural network: `python llm_price_predictor/src/pricer/modeling/NN_benchmark.py`
    - Deep neural network: `python llm_price_predictor/src/pricer/modeling/DNN_benchmark.py`
    - Frontier LLM (zero-shot): `python llm_price_predictor/src/pricer/modeling/LLM_pretuned_benchmark.py`
@@ -195,6 +189,7 @@ The modelling and evaluation scripts run locally. Data curation, batch preproces
    - Llama fine-tuned model (local, Apple Silicon): `python llm_price_predictor/src/pricer/modeling/llama_finetunning_eval_local.py`
    - GPT-5.1 + RAG (requires vectorstore built first): `python llm_price_predictor/src/pricer/modeling/openai_gpt5_1_rag_benchmark.py`
    - Ensemble (requires vectorstore + DNN weights + Modal deployment): `python llm_price_predictor/src/pricer/modeling/ensemble_benchmark.py`
+   - Autonomous deal-finding agent (requires all of the above + Pushover credentials): `python llm_price_predictor/src/pricer/agents/run_agentic_workflow.py`
 3. Llama benchmarks and fine-tuning that require a CUDA GPU run in Google Colab (Runtime → T4 GPU). These scripts load from the `items_prompts_full` / `items_prompts_lite` HuggingFace datasets (prompt-formatted, distinct from `items_full` / `items_lite` used by other models):
    - Llama base-model evaluation: `llm_price_predictor/src/pricer/modeling/basemodel_llama_eval_benchmark.py`
    - Llama QLoRA fine-tuning: `llm_price_predictor/src/pricer/modeling/llama_finetunning_training_colab.py`

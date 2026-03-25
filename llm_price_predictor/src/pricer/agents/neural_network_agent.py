@@ -1,5 +1,8 @@
+from pathlib import Path
 from src.pricer.agents.agent import Agent
 from src.pricer.agents.deep_neural_network import DeepNeuralNetworkInference
+
+DNN_PATH = str(Path(__file__).resolve().parents[1] / "modeling" / "deep_neural_network.pth")
 
 
 class NeuralNetworkAgent(Agent):
@@ -14,7 +17,7 @@ class NeuralNetworkAgent(Agent):
         self.log("Neural Network Agent is initializing")
         self.neural_network = DeepNeuralNetworkInference()
         self.neural_network.setup()
-        self.neural_network.load("deep_neural_network.pth")
+        self.neural_network.load(DNN_PATH)
         self.log("Neural Network Agent is ready and weights are loaded")
 
     def price(self, description: str) -> float:

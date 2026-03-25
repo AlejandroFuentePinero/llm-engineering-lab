@@ -11,3 +11,5 @@ preprocessed_db/
 recall_lab/
 products_vectorstore
 deep_neural_network.pth
+jsonl/
+planning_agent.py
