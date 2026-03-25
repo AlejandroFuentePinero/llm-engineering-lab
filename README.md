@@ -58,7 +58,7 @@ Projects escalate in complexity. Earlier ones establish core patterns like struc
   <img src="media/price_predictor_hero.png" alt="LLM Price Predictor" width="900">
 </p>
 
-An end-to-end machine learning system that predicts Amazon product prices from natural language descriptions. It covers the full lifecycle: data curation at scale, LLM-powered preprocessing, model training and benchmarking across a dozen architectures, RAG retrieval, cloud deployment, and autonomous multi-agent orchestration. The system culminates in an agent that scans the web for deals, prices them using the ensemble model, and notifies the user in real time.
+An end-to-end machine learning system that predicts Amazon product prices from natural language descriptions. It covers the full lifecycle: data curation at scale, LLM-powered preprocessing, model training and benchmarking across a dozen architectures, RAG retrieval, cloud deployment, autonomous multi-agent orchestration, and a live Gradio dashboard. The system culminates in an agent that scans the web for deals, prices them using the ensemble model, and notifies the user in real time.
 
 ### Business problem
 
@@ -68,7 +68,7 @@ The real question is not whether an LLM can do this, but which approach gives th
 
 ### What it does
 
-The system is split into six stages, each with its own module:
+The system is split into seven stages, each with its own module:
 
 - **Data curation (`data_curation_orchestration.py` + `parser.py`)**
   - loads Amazon product data across 8 categories from the McAuley-Lab dataset using parallel workers
@@ -102,10 +102,22 @@ The system is split into six stages, each with its own module:
 - **Agent system (`src/pricer/agents/`)**
   - production-ready wrappers around each model: `FrontierAgent` (GPT-5.1+RAG), `NeuralNetworkAgent` (DNN), `SpecialistAgent` (Modal), `EnsembleAgent` (combines all three)
   - `AutonomousPlanningAgent` is an LLM-driven orchestrator: GPT-5.1 receives three tools (`scan_the_internet_for_bargains`, `estimate_true_value`, `notify_user_of_deal`) and decides autonomously which deals to evaluate, runs the ensemble on each, picks the best opportunity, and triggers a notification. The orchestration logic lives in the model, not in code
+  - `DealAgentFramework` is the persistent backend used by the Gradio UI: it wraps `PlanningAgent`, maintains a `memory.json` of previously surfaced deals across runs, and exposes a `get_plot_data()` method that fetches embeddings from ChromaDB and reduces them to 3D with t-SNE for visualisation
   - `ScannerAgent` scrapes RSS deal feeds, filters out previously seen URLs, and uses GPT structured outputs to select the 5 deals with the clearest prices and best descriptions
   - `MessagingAgent` uses Claude to write the notification message and delivers it via the Pushover API
-  - run the full autonomous workflow: `python llm_price_predictor/src/pricer/agents/run_agentic_workflow.py`
+  - run the full autonomous workflow from the terminal: `python llm_price_predictor/src/pricer/agents/run_agentic_workflow.py`
   - `agents/items.py` is a lightweight `Item` for inference only; the full version with fine-tuning fields lives in `data_prep/items.py`
+
+- **Gradio UI (`src/pricer/deployment/price_is_right.py`)**
+  - a live dashboard that runs the deal-finding agent on load and refreshes every 5 minutes
+  - streams agent logs in real time to the UI using a background thread and queue, with ANSI colours converted to HTML via `log_utils.py`
+  - displays found deals in a dataframe; clicking a row manually re-sends the push notification for that deal
+  - renders a 3D scatter plot of the vectorstore embeddings (coloured by product category) using t-SNE dimensionality reduction
+  - run with: `python llm_price_predictor/src/pricer/deployment/price_is_right.py`
+
+<p align="center">
+  <img src="media/pricer_gradio_demo.png" alt="The Price is Right - Gradio UI" width="900">
+</p>
 
 ### Models benchmarked
 
