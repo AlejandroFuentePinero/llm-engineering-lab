@@ -6,7 +6,7 @@
 
 ## Overview
 
-A lab for building production-grade LLM systems, from single-model inference to autonomous multi-agent pipelines. Projects are real, deployable, and cover the full engineering stack.
+A portfolio of production-grade LLM systems built from scratch — spanning RAG at 800k-document scale, open-source and frontier model fine-tuning, multi-agent orchestration, and serverless cloud deployment. Every project is end-to-end: real data, real evaluation, real infrastructure.
 
 **Skills demonstrated across this repo:**
 - **RAG**: vector ingestion, embedding search, retrieval-augmented generation at scale (800k documents)
@@ -58,7 +58,7 @@ Projects escalate in complexity. Earlier ones establish core patterns like struc
   <img src="media/price_predictor_hero.png" alt="LLM Price Predictor" width="900">
 </p>
 
-An end-to-end machine learning system that predicts Amazon product prices from natural language descriptions. It covers the full lifecycle: data curation at scale, LLM-powered preprocessing, model training and benchmarking across a dozen architectures, RAG retrieval, cloud deployment, autonomous multi-agent orchestration, and a live Gradio dashboard. The system culminates in an agent that scans the web for deals, prices them using the ensemble model, and notifies the user in real time.
+A system that scans the web for deals in real time, prices each one using a multi-model ensemble, and sends a push notification when it finds something worth buying. Under the hood it covers the full ML lifecycle: 820k-item data curation, LLM-powered preprocessing, training and benchmarking across a dozen model architectures, RAG over 800k documents, serverless cloud deployment, and an autonomous agent that ties it all together in a live Gradio dashboard.
 
 ### Business problem
 
@@ -101,11 +101,12 @@ The system is split into seven stages, each with its own module:
 
 - **Agent system (`src/pricer/agents/`)**
   - production-ready wrappers around each model: `FrontierAgent` (GPT-5.1+RAG), `NeuralNetworkAgent` (DNN), `SpecialistAgent` (Modal), `EnsembleAgent` (combines all three)
+  - `EnsembleAgent` first rewrites the product description with a lightweight local LLM via `agents/preprocessor.py` (litellm + Ollama by default) before passing the cleaned text to each pricing model — this mirrors the LLM preprocessing done at training time and keeps the input distribution consistent at inference
   - `AutonomousPlanningAgent` is an LLM-driven orchestrator: GPT-5.1 receives three tools (`scan_the_internet_for_bargains`, `estimate_true_value`, `notify_user_of_deal`) and decides autonomously which deals to evaluate, runs the ensemble on each, picks the best opportunity, and triggers a notification. The orchestration logic lives in the model, not in code
   - `DealAgentFramework` is the persistent backend used by the Gradio UI: it wraps `PlanningAgent`, maintains a `memory.json` of previously surfaced deals across runs, and exposes a `get_plot_data()` method that fetches embeddings from ChromaDB and reduces them to 3D with t-SNE for visualisation
   - `ScannerAgent` scrapes RSS deal feeds, filters out previously seen URLs, and uses GPT structured outputs to select the 5 deals with the clearest prices and best descriptions
   - `MessagingAgent` uses Claude to write the notification message and delivers it via the Pushover API
-  - run the full autonomous workflow from the terminal: `python llm_price_predictor/src/pricer/agents/run_agentic_workflow.py`
+  - run the full autonomous workflow from the terminal: `uv run python llm_price_predictor/src/pricer/agents/run_agentic_workflow.py`
   - `agents/items.py` is a lightweight `Item` for inference only; the full version with fine-tuning fields lives in `data_prep/items.py`
 
 - **Gradio UI (`src/pricer/deployment/price_is_right.py`)**
@@ -113,7 +114,9 @@ The system is split into seven stages, each with its own module:
   - streams agent logs in real time to the UI using a background thread and queue, with ANSI colours converted to HTML via `log_utils.py`
   - displays found deals in a dataframe; clicking a row manually re-sends the push notification for that deal
   - renders a 3D scatter plot of the vectorstore embeddings (coloured by product category) using t-SNE dimensionality reduction
-  - run with: `python llm_price_predictor/src/pricer/deployment/price_is_right.py`
+  - uses `PlanningAgent` (deterministic hardcoded pipeline) rather than `AutonomousPlanningAgent` (LLM-driven loop); the terminal workflow and the UI therefore behave slightly differently in how they orchestrate the scan
+  - requires: ChromaDB vectorstore already ingested, `deep_neural_network.pth` weights present, Modal deployment live, and Pushover credentials set
+  - run with: `uv run python llm_price_predictor/src/pricer/deployment/price_is_right.py`
 
 <p align="center">
   <img src="media/pricer_gradio_demo.png" alt="The Price is Right - Gradio UI" width="900">
@@ -130,6 +133,8 @@ The system is split into seven stages, each with its own module:
 <p align="center">
   <img src="media/ensemble_pricer_res.png" alt="Ensemble model result" width="900">
 </p>
+
+The final ensemble achieves a mean absolute error of **$29.95** and **R² of 86.3%** on a held-out test set of 10,000 Amazon products.
 
 | Model | Type |
 |---|---|
@@ -194,16 +199,17 @@ Modelling and evaluation scripts run locally from the project root. Data curatio
 
 1. Set your environment variables in a `.env` file: `HF_TOKEN`, `OPENAI_API_KEY`, `GROQ_API_KEY`
 2. Run any benchmark:
-   - Neural network: `python llm_price_predictor/src/pricer/modeling/NN_benchmark.py`
-   - Deep neural network: `python llm_price_predictor/src/pricer/modeling/DNN_benchmark.py`
-   - Frontier LLM (zero-shot): `python llm_price_predictor/src/pricer/modeling/LLM_pretuned_benchmark.py`
-   - Llama base model (local, Apple Silicon): `python llm_price_predictor/src/pricer/modeling/basemodel_llama_eval_benchmark_local.py`
-   - Llama fine-tuned model (local, Apple Silicon): `python llm_price_predictor/src/pricer/modeling/llama_finetunning_eval_local.py`
-   - GPT-5.1 + RAG (requires vectorstore built first): `python llm_price_predictor/src/pricer/modeling/openai_gpt5_1_rag_benchmark.py`
-   - Ensemble (requires vectorstore + DNN weights + Modal deployment): `python llm_price_predictor/src/pricer/modeling/ensemble_benchmark.py`
-   - Autonomous deal-finding agent (requires all of the above + Pushover credentials): `python llm_price_predictor/src/pricer/agents/run_agentic_workflow.py`
+   - Neural network: `uv run python llm_price_predictor/src/pricer/modeling/NN_benchmark.py`
+   - Deep neural network: `uv run python llm_price_predictor/src/pricer/modeling/DNN_benchmark.py`
+   - Frontier LLM (zero-shot): `uv run python llm_price_predictor/src/pricer/modeling/LLM_pretuned_benchmark.py`
+   - Llama base model (local, Apple Silicon): `uv run python llm_price_predictor/src/pricer/modeling/basemodel_llama_eval_benchmark_local.py`
+   - Llama fine-tuned model (local, Apple Silicon): `uv run python llm_price_predictor/src/pricer/modeling/llama_finetunning_eval_local.py`
+   - GPT-5.1 + RAG (requires vectorstore built first): `uv run python llm_price_predictor/src/pricer/modeling/openai_gpt5_1_rag_benchmark.py`
+   - Ensemble (requires vectorstore + DNN weights + Modal deployment): `uv run python llm_price_predictor/src/pricer/modeling/ensemble_benchmark.py`
+   - Autonomous deal-finding agent (requires all of the above + Pushover credentials): `uv run python llm_price_predictor/src/pricer/agents/run_agentic_workflow.py`
+   - Gradio UI (requires vectorstore + DNN weights + Modal deployment + Pushover credentials): `uv run python llm_price_predictor/src/pricer/deployment/price_is_right.py`
 3. Llama benchmarks and fine-tuning that require a CUDA GPU run in Google Colab (Runtime → T4 GPU). These scripts load from the `items_prompts_full` / `items_prompts_lite` HuggingFace datasets (prompt-formatted, distinct from `items_full` / `items_lite` used by other models):
-   - Llama base-model evaluation: `llm_price_predictor/src/pricer/modeling/basemodel_llama_eval_benchmark.py`
+   - Llama base-model evaluation: `llm_price_predictor/src/pricer/modeling/basemodel_llama_eval_benchmark_colab.py`
    - Llama QLoRA fine-tuning: `llm_price_predictor/src/pricer/modeling/llama_finetunning_training_colab.py`
    - Llama fine-tuned model evaluation: `llm_price_predictor/src/pricer/modeling/llama_finetunning_eval_colab.py`
      - Requires `HF_TOKEN` and `WANDB_API_KEY` in Colab Secrets (Tools → Secrets)
@@ -328,11 +334,11 @@ Results are displayed in a Gradio dashboard (`evaluator.py`) with colour-coded m
 3. Set environment variables (at minimum `OPENAI_API_KEY`)
 4. Add your company Markdown files under `knowledge-base/`
 5. Build the vector store:
-   - `python src/implementation/ingest.py`
+   - `uv run python src/implementation/ingest.py`
 6. Launch the chat UI:
-   - `python app.py`
+   - `uv run python app.py`
 7. Launch the evaluation dashboard (optional):
-   - `python evaluator.py`
+   - `uv run python evaluator.py`
 
 ### Demo app (Gradio)
 
@@ -481,10 +487,10 @@ This two-stage pattern (select → generate) generalises well beyond brochures, 
 
 A lightweight Gradio UI is included to demonstrate how the utility can be embedded in an interactive tool (local demo; not production hosted). It calls `brochure_generator(...)` under the hood and renders the brochure as Markdown.
 
-- entry point: `./company_sales_brochure_generator/app.py`
+- entry point: `./company_sales_brochure_generator/src/app.py`
 - run locally:
   - ensure `OPENAI_API_KEY` is set (via `.env` or environment)
-  - start the app: `python company_sales_brochure_generator/app.py`
+  - start the app: `uv run python company_sales_brochure_generator/src/app.py`
 
 
 ---
@@ -536,7 +542,7 @@ A lightweight Gradio UI is included to demonstrate the tutor in an interactive s
 - entry point: `./tech_tutor/src/app.py`
 - run locally:
   - ensure `OPENAI_API_KEY` is set (via `.env` or environment)
-  - start the app: `python -m tech_tutor.src.app`
+  - start the app: `uv run python -m tech_tutor.src.app`
 
 ---
 
@@ -616,7 +622,7 @@ A lightweight Gradio UI is included to demonstrate the intake flow in an interac
 - entry point: `./sales_chatbot_assistant/src/app.py`
 - run locally:
   - ensure `OPENAI_API_KEY` is set (via `.env`)
-  - start the app: `python -m sales_chatbot_assistant.src.app`
+  - start the app: `uv run python -m sales_chatbot_assistant.src.app`
 
 ---
 
@@ -666,7 +672,7 @@ A lightweight Gradio Blocks UI is included to demonstrate the full loop (chat �
 - entry point: `./price_ticket_agentic_tool/src/flight_booking_agent.py`
 - run locally:
   - ensure `OPENAI_API_KEY` is set (via `.env` or environment)
-  - start the app: `python price_ticket_agentic_tool/src/flight_booking_agent.py`
+  - start the app: `uv run python price_ticket_agentic_tool/src/flight_booking_agent.py`
 
 ---
 
@@ -734,7 +740,7 @@ Given a set of knobs, the generator:
 - entry point: `./synthetic_data_generator/src/ab_data_generator.py`
 - run locally:
   - ensure `OPENAI_API_KEY` is set (via `.env` or environment)
-  - start the app: `python synthetic_data_generator/src/ab_data_generator.py`
+  - start the app: `uv run python synthetic_data_generator/src/ab_data_generator.py`
 
 ---
 
@@ -806,7 +812,6 @@ A lightweight Gradio UI is included for interactive use: paste Python code, sele
 - entry point: `python_to_cpp_performance(ui_launch=True)`
 - run locally:
   - ensure required keys are set (`OPENAI_API_KEY` and/or `ANTHROPIC_API_KEY`, plus optional `OPENROUTER_API_KEY`)
-  - install UI dependency: `pip install gradio`
-  - launch: call the function with `ui_launch=True` (opens in browser)
+  - launch: call the function with `ui_launch=True` from inside a `uv run python` session (opens in browser)
 
 ---
