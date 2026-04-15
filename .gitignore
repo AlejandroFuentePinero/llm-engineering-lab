@@ -13,3 +13,4 @@ products_vectorstore
 deep_neural_network.pth
 jsonl/
 memory.json
+prices.db

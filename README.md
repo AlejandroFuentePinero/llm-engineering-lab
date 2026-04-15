@@ -327,6 +327,8 @@ A standalone evaluation suite (`evaluator.py` + `src/evaluation/`) measures both
 
 Results are displayed in a Gradio dashboard (`evaluator.py`) with colour-coded metrics (green / amber / red) and a per-category bar chart. A CLI mode (`eval.py <test_row_number>`) is also available for inspecting individual test cases.
 
+<img src="media/rag_test.png" alt="RAG Evaluation Dashboard" width="900">
+
 ### Run locally
 
 1. Create and activate your environment
