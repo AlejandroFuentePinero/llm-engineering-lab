@@ -109,6 +109,10 @@ The system is split into seven stages, each with its own module:
   - run the full autonomous workflow from the terminal: `uv run python llm_price_predictor/src/pricer/agents/run_agentic_workflow.py`
   - `agents/items.py` is a lightweight `Item` for inference only; the full version with fine-tuning fields lives in `data_prep/items.py`
 
+<p align="center">
+  <img src="media/price_predictor_agent_hierarchy.svg" alt="Agent hierarchy diagram" width="900">
+</p>
+
 - **Gradio UI (`src/pricer/deployment/price_is_right.py`)**
   - a live dashboard that runs the deal-finding agent on load and refreshes every 5 minutes
   - streams agent logs in real time to the UI using a background thread and queue, with ANSI colours converted to HTML via `log_utils.py`
